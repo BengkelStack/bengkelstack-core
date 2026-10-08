@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kasir Bengkel & Pricing Engine</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 24px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+    h1 { font-size: 1.5rem; font-weight: 700; color: var(--text); }
+    .badge { font-size: 0.75rem; padding: 4px 8px; border-radius: 9999px; font-weight: 600; text-transform: uppercase; }
+    .badge-primary { background: #0284c7; color: #fff; }
+    .badge-custom { background: #b45309; color: #fef3c7; }
+    .badge-service { background: #6366f1; color: #fff; }
+
+    .grid { display: grid; grid-template-columns: 360px 1fr; gap: 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
+    input, select { width: 100%; background: #0f172a; border: 1px solid var(--border); color: #fff; padding: 10px 12px; border-radius: 6px; font-size: 0.95rem; }
+    input:focus, select:focus { outline: none; border-color: var(--accent); ring: 2px solid var(--accent); }
+
+    .plate-input-wrapper { display: flex; gap: 8px; }
+    .btn { cursor: pointer; padding: 10px 16px; border-radius: 6px; border: none; font-weight: 600; font-size: 0.9rem; transition: background 0.15s ease; }
+    .btn-primary { background: var(--accent); color: #0f172a; }
+    .btn-primary:hover { background: var(--accent-hover); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; padding: 6px 10px; font-size: 0.8rem; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover { background: #334155; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th { text-align: left; padding: 10px; color: var(--text-muted); font-size: 0.8rem; border-bottom: 1px solid var(--border); }
+    td { padding: 12px 10px; border-bottom: 1px solid var(--border); font-size: 0.9rem; vertical-align: middle; }
+    
+    .toggle-group { display: inline-flex; background: #0f172a; border-radius: 6px; padding: 2px; border: 1px solid var(--border); }
+    .toggle-btn { padding: 4px 10px; font-size: 0.75rem; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 4px; }
+    .toggle-btn.active { background: var(--accent); color: #0f172a; font-weight: 700; }
+
+    .total-box { margin-top: 24px; background: #0f172a; padding: 18px; border-radius: 6px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .total-label { font-size: 1rem; color: var(--text-muted); }
+    .total-amount { font-size: 1.8rem; font-weight: 700; color: #38bdf8; }
+
+    .toast { position: fixed; bottom: 20px; right: 20px; background: var(--success); color: #fff; padding: 12px 20px; border-radius: 6px; font-weight: 600; display: none; z-index: 999; }
+    .status-alert { font-size: 0.8rem; padding: 8px 12px; border-radius: 6px; margin-top: 8px; display: none; }
+    .status-alert.found { background: #064e3b; color: #a7f3d0; display: block; }
+    .status-alert.new { background: #451a03; color: #fde68a; display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Kasir Bengkel & Pricing Engine</h1>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">Perhitungan otomatis Bawa Pulang (Retail) vs Pasang di Tempat (Retail + Ongkos)</p>
+      </div>
+      <span class="badge badge-primary">Dynamic Pricing v1.0</span>
+    </header>
+
+    <div class="grid">
+      <!-- PANEL KIRI: INFO KENDARAAN & TAMBAH ITEM -->
+      <div>
+        <!-- Data Kendaraan -->
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="card-title">Data Kendaraan</div>
+          <div class="form-group">
+            <label for="plateInput">Nomor Plat (Contoh: B 1234 XYZ)</label>
+            <div class="plate-input-wrapper">
+              <input type="text" id="plateInput" placeholder="B 1234 XYZ" style="text-transform: uppercase;">
+              <button class="btn btn-outline" id="btnLookupPlate">Cek</button>
+            </div>
+            <div id="plateAlert" class="status-alert"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="motorSelect">Model Motor</label>
+            <select id="motorSelect">
+              <option value="">-- Pilih Model Motor --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="customerName">Nama Pelanggan</label>
+            <input type="text" id="customerName" placeholder="Nama Pemilik">
+          </div>
+        </div>
+
+        <!-- Riwayat Servis Kendaraan (Plat Nomor) -->
+        <div class="card" id="historyCard" style="margin-bottom: 20px; display: none;">
+          <div class="card-title" style="justify-content: space-between;">
+            <span>Riwayat Servis Kendaraan</span>
+            <span id="historyCountBadge" class="badge badge-primary">0 Riwayat</span>
+          </div>
+          <div id="historyList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+            <!-- History items -->
+          </div>
+        </div>
+
+        <!-- Tambah Item ke Keranjang -->
+        <div class="card">
+          <div class="card-title">Katalog & Tambah Item</div>
+          <div class="form-group">
+            <label>Tipe Item</label>
+            <select id="itemTypeSelect" onchange="renderItemDropdown()">
+              <option value="part">Suku Cadang (Spare Part)</option>
+              <option value="service">Jasa Servis</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Pilih Barang / Jasa</label>
+            <select id="itemSelect">
+              <option value="">-- Memuat Katalog --</option>
+            </select>
+          </div>
+
+          <button class="btn btn-primary" style="width: 100%; margin-top: 8px;" onclick="addItemToCart()">+ Tambah ke Keranjang</button>
+        </div>
+      </div>
+
+      <!-- PANEL KANAN: KERANJANG TRANSAKSI & PRICING ENGINE -->
+      <div class="card">
+        <div class="card-title" style="justify-content: space-between;">
+          <span>Keranjang Pekerjaan & Estimasi Kasir</span>
+          <span id="cartCountBadge" class="badge badge-primary">0 Item</span>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Item / Layanan</th>
+              <th style="width: 150px;">Opsi Penjualan</th>
+              <th>Harga Part</th>
+              <th>Ongkos Pasang</th>
+              <th>Subtotal</th>
+              <th style="text-align: right;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="cartTableBody">
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">Keranjang kosong. Pilih barang atau jasa untuk menghitung estimasi.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Total Box -->
+        <div class="total-box">
+          <div>
+            <div class="total-label">Total Tagihan Transaksi</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Pricing Engine realtime auto-calculated</div>
+          </div>
+          <div class="total-amount" id="totalAmountDisplay">Rp 0</div>
+        </div>
+
+        <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 12px;">
+          <button class="btn btn-outline" onclick="resetCart()">Kosongkan</button>
+          <button class="btn btn-success" style="font-size: 1rem; padding: 12px 24px;" onclick="checkoutOrder()">Simpan Transaksi Kasir</button>
+        </div>
+
+        <!-- PANEL REFERENSI MODEL MOTOR -->
+        <div class="card" id="modelRefCard" style="margin-top: 24px; display: none; background: #131d31;">
+          <div class="card-title" style="justify-content: space-between; margin-bottom: 12px;">
+            <div>
+              <span id="modelRefTitle" style="color: var(--accent);">Referensi Model Motor</span>
+              <span style="font-size:0.75rem; color:var(--text-muted); display:block; font-weight:normal; margin-top:2px;">Histori pengerjaan & acuan tarif terstandarisasi untuk tipe motor ini</span>
+            </div>
+            <span id="modelRefBadge" class="badge badge-custom">Model Dipilih</span>
+          </div>
+
+          <div style="display:flex; gap:8px; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:8px;">
+            <button class="toggle-btn active" id="btnTabModelHist" onclick="switchModelTab('hist')">Histori Part/Jasa Pernah Diterapkan</button>
+            <button class="toggle-btn" id="btnTabModelEst" onclick="switchModelTab('est')">Katalog & Estimasi Tarif Pasang</button>
+          </div>
+
+          <!-- TAB 1: HISTORI PENERAPAN PADA MODEL INI -->
+          <div id="modelHistTab">
+            <div id="modelHistContent" style="max-height: 240px; overflow-y: auto;">
+              <!-- Historical list -->
+            </div>
+          </div>
+
+          <!-- TAB 2: ESTIMASI TARIF PASANG KATALOG -->
+          <div id="modelEstTab" style="display: none;">
+            <div id="modelEstContent" style="max-height: 240px; overflow-y: auto;">
+              <!-- Catalog estimates list -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">Transaksi Berhasil Disimpan!</div>
+
+  <script>
+    let motorModels = [];
+    let partsCatalog = [];
+    let servicesCatalog = [];
+    let cart = []; // [{item_type, item_id, action_type}]
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+      });
+    }
+
+    function formatRupiah(num) {
+      return "Rp " + Math.round(num).toLocaleString("id-ID");
+    }
+
+    async function init() {
+      await loadMasterData();
+      setupEvents();
+    }
+
+    async function loadMasterData() {
+      const [resMotors, resParts, resServices] = await Promise.all([
+        fetch('/api/motor-models').then(r => r.json()),
+        fetch('/api/parts').then(r => r.json()),
+        fetch('/api/services').then(r => r.json()),
+      ]);
+      motorModels = resMotors;
+      partsCatalog = resParts;
+      servicesCatalog = resServices;
+
+      // Populate motor select
+      const motorSelect = document.getElementById('motorSelect');
+      motorSelect.innerHTML = '<option value="">-- Pilih Model Motor --</option>' +
+        motorModels.map(m => `<option value="${m.id}">${escapeHtml(m.brand)} - ${escapeHtml(m.model_name)}</option>`).join('');
+
+      renderItemDropdown();
+    }
+
+    function renderItemDropdown() {
+      const type = document.getElementById('itemTypeSelect').value;
+      const itemSelect = document.getElementById('itemSelect');
+      if (type === 'part') {
+        itemSelect.innerHTML = partsCatalog.map(p => 
+          `<option value="${p.id}">[${escapeHtml(p.part_code)}] ${escapeHtml(p.name)} (Retail: ${formatRupiah(p.retail_price)})</option>`
+        ).join('');
+      } else {
+        itemSelect.innerHTML = servicesCatalog.map(s => 
+          `<option value="${s.id}">${escapeHtml(s.service_name)} (${formatRupiah(s.standard_fee)})</option>`
+        ).join('');
+      }
+    }
+
+    function setupEvents() {
+      document.getElementById('btnLookupPlate').addEventListener('click', lookupPlate);
+      document.getElementById('plateInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') lookupPlate();
+      });
+      document.getElementById('motorSelect').addEventListener('change', () => {
+        const modelId = document.getElementById('motorSelect').value;
+        recalculatePricing();
+        if (modelId) {
+          loadModelReference(modelId);
+        } else {
+          document.getElementById('modelRefCard').style.display = 'none';
+        }
+      });
+    }
+
+    async function lookupPlate() {
+      const plate = document.getElementById('plateInput').value.trim();
+      const alertBox = document.getElementById('plateAlert');
+      if (!plate) return;
+
+      const res = await fetch(`/api/vehicle-lookup?plate=${encodeURIComponent(plate)}`);
+      const veh = await res.json();
+      if (veh) {
+        document.getElementById('customerName').value = veh.customer_name;
+        document.getElementById('motorSelect').value = veh.motor_model_id;
+        alertBox.className = 'status-alert found';
+        alertBox.textContent = `✓ Kendaraan terdaftar: ${veh.brand} ${veh.model_name} (a.n ${veh.customer_name})`;
+        recalculatePricing();
+        await loadPlateHistory(plate);
+        await loadModelReference(veh.motor_model_id);
+      } else {
+        alertBox.className = 'status-alert new';
+        alertBox.textContent = `Kendaraan baru / belum ada di database. Silakan isi model & nama pelanggan.`;
+        document.getElementById('historyCard').style.display = 'none';
+      }
+    }
+
+    function switchModelTab(tab) {
+      const btnHist = document.getElementById('btnTabModelHist');
+      const btnEst = document.getElementById('btnTabModelEst');
+      const tabHist = document.getElementById('modelHistTab');
+      const tabEst = document.getElementById('modelEstTab');
+
+      if (tab === 'hist') {
+        btnHist.className = 'toggle-btn active';
+        btnEst.className = 'toggle-btn';
+        tabHist.style.display = 'block';
+        tabEst.style.display = 'none';
+      } else {
+        btnHist.className = 'toggle-btn';
+        btnEst.className = 'toggle-btn active';
+        tabHist.style.display = 'none';
+        tabEst.style.display = 'block';
+      }
+    }
+
+    function quickAddFromReference(type, id, actionType) {
+      cart.push({
+        item_type: type,
+        item_id: id,
+        action_type: actionType
+      });
+      recalculatePricing();
+      showToast("Item berhasil ditambahkan ke keranjang!");
+    }
+
+    async function loadModelReference(modelId) {
+      if (!modelId) return;
+      const card = document.getElementById('modelRefCard');
+      const title = document.getElementById('modelRefTitle');
+      const histContent = document.getElementById('modelHistContent');
+      const estContent = document.getElementById('modelEstContent');
+
+      const res = await fetch(`/api/reference/model?motor_model_id=${modelId}`);
+      const data = await res.json();
+      if (!data) {
+        card.style.display = 'none';
+        return;
+      }
+
+      card.style.display = 'block';
+      title.textContent = `Referensi Model: ${data.motor_model.brand} ${data.motor_model.model_name}`;
+
+      // 1. Render History tab
+      if (data.historical_items && data.historical_items.length > 0) {
+        histContent.innerHTML = `
+          <table style="margin-top:0;">
+            <thead>
+              <tr>
+                <th>Item / Layanan</th>
+                <th>Pernah Dipakai</th>
+                <th>Terakhir Digunakan</th>
+                <th>Tarif Terakhir</th>
+                <th style="text-align:right;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.historical_items.map(it => {
+                const isPart = it.item_type === 'part';
+                const typeBadge = isPart 
+                  ? `<span class="badge badge-primary">Part</span>` 
+                  : `<span class="badge badge-service">Jasa</span>`;
+                const dateStr = it.last_used_at ? it.last_used_at.substring(0, 10) : '-';
+                const feeText = it.latest_install_fee > 0 ? ` (Ongkos: ${formatRupiah(it.latest_install_fee)})` : '';
+                return `
+                  <tr>
+                    <td>
+                      <div style="font-weight:600;">${escapeHtml(it.item_name)}</div>
+                      <div style="font-size:0.75rem; color:var(--text-muted);">${typeBadge} ${it.part_code ? escapeHtml(it.part_code) : ''}</div>
+                    </td>
+                    <td><span style="font-weight:700; color:var(--accent);">${it.usage_count}x</span> transaksi</td>
+                    <td style="font-size:0.8rem; color:var(--text-muted);">${dateStr}</td>
+                    <td>${formatRupiah(it.latest_price)}${feeText}</td>
+                    <td style="text-align:right;">
+                      <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="quickAddFromReference('${it.item_type}', ${it.item_id}, 'installed')">+ Keranjang</button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        `;
+      } else {
+        histContent.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted); font-size:0.85rem;">Belum ada riwayat transaksi pengerjaan sebelumnya untuk model motor ini.</div>`;
+      }
+
+      // 2. Render Estimates tab
+      if (data.catalog_estimates && data.catalog_estimates.parts) {
+        estContent.innerHTML = `
+          <table style="margin-top:0;">
+            <thead>
+              <tr>
+                <th>Suku Cadang</th>
+                <th>Bawa Pulang (Retail)</th>
+                <th>Ongkos Pasang Model Ini</th>
+                <th>Total Pasang</th>
+                <th style="text-align:right;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.catalog_estimates.parts.map(p => {
+                const feeBadge = p.is_custom_fee ? `<span class="badge badge-custom">Khusus</span> ` : '';
+                return `
+                  <tr>
+                    <td>
+                      <div style="font-weight:600;">${escapeHtml(p.name)}</div>
+                      <div style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(p.part_code)}</div>
+                    </td>
+                    <td>${formatRupiah(p.retail_price)}</td>
+                    <td>${feeBadge}${formatRupiah(p.applicable_install_fee)}</td>
+                    <td style="font-weight:700; color:var(--accent);">${formatRupiah(p.installed_estimate)}</td>
+                    <td style="text-align:right;">
+                      <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="quickAddFromReference('part', ${p.id}, 'installed')">+ Pasang</button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+    }
+
+    async function loadPlateHistory(plate) {
+      const card = document.getElementById('historyCard');
+      const list = document.getElementById('historyList');
+      const badge = document.getElementById('historyCountBadge');
+
+      const res = await fetch(`/api/history/plate?plate=${encodeURIComponent(plate)}`);
+      const data = await res.json();
+
+      if (!data || !data.work_orders || data.work_orders.length === 0) {
+        card.style.display = 'none';
+        return;
+      }
+
+      card.style.display = 'block';
+      badge.textContent = `${data.work_orders.length} Servis`;
+
+      list.innerHTML = data.work_orders.map(wo => {
+        const dateStr = wo.created_at ? wo.created_at.replace('T', ' ').substring(0, 16) : '-';
+        const itemsHtml = wo.items.map(it => {
+          const typeBadge = it.item_type === 'part' 
+            ? `<span class="badge badge-primary" style="font-size:0.65rem;">Part</span>` 
+            : `<span class="badge badge-service" style="font-size:0.65rem;">Jasa</span>`;
+          const actLabel = it.action_type === 'takeaway' ? ' (Bawa Pulang)' : ' (Pasang)';
+          return `
+            <div style="font-size: 0.8rem; margin-top: 4px; display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border); padding-bottom: 2px;">
+              <div>${typeBadge} ${escapeHtml(it.item_name)}${actLabel}</div>
+              <div style="font-weight: 600; color: #cbd5e1;">${formatRupiah(it.subtotal)}</div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div style="background: #0f172a; border: 1px solid var(--border); border-radius: 6px; padding: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-weight: 700; font-size: 0.85rem; color: var(--accent);">WO #${wo.id}</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">${dateStr}</span>
+            </div>
+            ${itemsHtml}
+            <div style="margin-top: 6px; text-align: right; font-weight: 700; color: #38bdf8; font-size: 0.85rem;">
+              Total: ${formatRupiah(wo.total_amount)}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function addItemToCart() {
+      const type = document.getElementById('itemTypeSelect').value;
+      const itemId = parseInt(document.getElementById('itemSelect').value);
+      if (!itemId) return;
+
+      // Default action: installed for service, takeaway/installed based on default
+      const actionType = type === 'part' ? 'installed' : 'installed';
+      cart.push({
+        item_type: type,
+        item_id: itemId,
+        action_type: actionType
+      });
+      recalculatePricing();
+    }
+
+    function removeItem(index) {
+      cart.splice(index, 1);
+      recalculatePricing();
+    }
+
+    function toggleAction(index, action) {
+      cart[index].action_type = action;
+      recalculatePricing();
+    }
+
+    async function recalculatePricing() {
+      const motorModelId = document.getElementById('motorSelect').value ? parseInt(document.getElementById('motorSelect').value) : null;
+      document.getElementById('cartCountBadge').textContent = `${cart.length} Item`;
+
+      if (cart.length === 0) {
+        document.getElementById('cartTableBody').innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">Keranjang kosong. Pilih barang atau jasa untuk menghitung estimasi.</td>
+          </tr>
+        `;
+        document.getElementById('totalAmountDisplay').textContent = formatRupiah(0);
+        return;
+      }
+
+      // Call API Pricing Engine
+      const res = await fetch('/api/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          motor_model_id: motorModelId,
+          items: cart
+        })
+      });
+      const data = await res.json();
+
+      renderCart(data.items);
+      document.getElementById('totalAmountDisplay').textContent = formatRupiah(data.total_amount);
+    }
+
+    function updateItemManualPrice(idx, field, value) {
+      const val = parseFloat(value) || 0;
+      cart[idx][field] = val;
+      recalculatePricing();
+    }
+
+    function toggleSaveAsStandard(idx, checked) {
+      cart[idx].save_as_standard = checked;
+    }
+
+    function toggleSaveAsModelCustom(idx, checked) {
+      cart[idx].save_as_model_custom = checked;
+    }
+
+    async function quickSaveMasterDirect(idx) {
+      const item = cart[idx];
+      const motorModelId = document.getElementById('motorSelect').value ? parseInt(document.getElementById('motorSelect').value) : null;
+      
+      const res = await fetch('/api/master/quick-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_type: item.item_type,
+          item_id: item.item_id,
+          new_price: item.price !== undefined ? item.price : null,
+          new_install_fee: item.install_fee !== undefined ? item.install_fee : null,
+          motor_model_id: motorModelId,
+          save_as_model_custom: !!item.save_as_model_custom
+        })
+      });
+
+      if (res.ok) {
+        showToast("Tarif berhasil diperbarui ke database master!");
+        await loadMasterData();
+        recalculatePricing();
+      } else {
+        alert("Gagal update master!");
+      }
+    }
+
+    function renderCart(items) {
+      const tbody = document.getElementById('cartTableBody');
+      const motorModelId = document.getElementById('motorSelect').value;
+
+      tbody.innerHTML = items.map((item, idx) => {
+        const isPart = item.item_type === 'part';
+        const typeBadge = isPart 
+          ? `<span class="badge badge-primary">Part</span>` 
+          : `<span class="badge badge-service">Jasa</span>`;
+        
+        const toggleHtml = isPart ? `
+          <div class="toggle-group">
+            <button class="toggle-btn ${item.action_type === 'takeaway' ? 'active' : ''}" onclick="toggleAction(${idx}, 'takeaway')">Bawa Pulang</button>
+            <button class="toggle-btn ${item.action_type === 'installed' ? 'active' : ''}" onclick="toggleAction(${idx}, 'installed')">Pasang</button>
+          </div>
+        ` : `<span style="font-size:0.8rem; color:var(--text-muted);">Pengerjaan</span>`;
+
+        const feeBadge = item.is_custom_fee ? `<span class="badge badge-custom" title="Tarif khusus model motor ini">Khusus</span> ` : '';
+
+        const currentPrice = cart[idx].price !== undefined ? cart[idx].price : item.price;
+        const currentFee = cart[idx].install_fee !== undefined ? cart[idx].install_fee : item.install_fee;
+        const saveStdChecked = cart[idx].save_as_standard ? 'checked' : '';
+        const saveCustomChecked = cart[idx].save_as_model_custom ? 'checked' : '';
+
+        return `
+          <tr>
+            <td>
+              <div style="font-weight:600;">${escapeHtml(item.name)}</div>
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+                ${typeBadge} ${item.part_code ? escapeHtml(item.part_code) : ''}
+              </div>
+            </td>
+            <td>${toggleHtml}</td>
+            <td>
+              <input type="number" value="${currentPrice}" style="width: 110px; padding: 4px 8px; font-size: 0.85rem;" 
+                onchange="updateItemManualPrice(${idx}, 'price', this.value)" title="Ubah harga satuan">
+            </td>
+            <td>
+              ${item.action_type === 'installed' ? `
+                <div style="display:flex; align-items:center; gap:4px;">
+                  ${feeBadge}
+                  <input type="number" value="${currentFee}" style="width: 90px; padding: 4px 8px; font-size: 0.85rem;" 
+                    onchange="updateItemManualPrice(${idx}, 'install_fee', this.value)" title="Ubah ongkos pasang">
+                </div>
+              ` : `<span style="color:var(--text-muted);">-</span>`}
+            </td>
+            <td style="font-weight:700; color:var(--accent); font-size: 1rem;">${formatRupiah(item.subtotal)}</td>
+            <td style="text-align: right;">
+              <button class="btn btn-danger" onclick="removeItem(${idx})">Hapus</button>
+            </td>
+          </tr>
+          <tr style="background: rgba(15, 23, 42, 0.4);">
+            <td colspan="6" style="padding: 6px 10px; border-bottom: 2px solid var(--border);">
+              <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
+                <div style="display: flex; gap: 16px; align-items: center;">
+                  <label style="display: flex; align-items: center; gap: 6px; margin: 0; cursor: pointer; color: #cbd5e1;">
+                    <input type="checkbox" style="width:auto;" ${saveStdChecked} onchange="toggleSaveAsStandard(${idx}, this.checked)">
+                    Simpan harga ini ke master data
+                  </label>
+                  ${isPart && motorModelId ? `
+                    <label style="display: flex; align-items: center; gap: 6px; margin: 0; cursor: pointer; color: #fde68a;">
+                      <input type="checkbox" style="width:auto;" ${saveCustomChecked} onchange="toggleSaveAsModelCustom(${idx}, this.checked)">
+                      Sebagai tarif khusus model motor ini
+                    </label>
+                  ` : ''}
+                </div>
+                <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem;" onclick="quickSaveMasterDirect(${idx})">Simpan ke Master Sekarang</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function resetCart() {
+      cart = [];
+      recalculatePricing();
+    }
+
+    async function checkoutOrder() {
+      const plate = document.getElementById('plateInput').value.trim();
+      const motorModelId = document.getElementById('motorSelect').value;
+      const customerName = document.getElementById('customerName').value.trim();
+
+      if (!plate) { alert("Harap isi Plat Nomor Kendaraan!"); return; }
+      if (!motorModelId) { alert("Harap pilih Model Motor!"); return; }
+      if (!customerName) { alert("Harap isi Nama Pelanggan!"); return; }
+      if (cart.length === 0) { alert("Keranjang belanja masih kosong!"); return; }
+
+      const res = await fetch('/api/work-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plate_number: plate,
+          motor_model_id: parseInt(motorModelId),
+          customer_name: customerName,
+          items: cart,
+          status: 'COMPLETED'
+        })
+      });
+
+      if (res.ok) {
+        const order = await res.json();
+        showToast(`Transaksi WO #${order.id} Senilai ${formatRupiah(order.total_amount)} Berhasil Disimpan!`);
+        resetCart();
+        await loadPlateHistory(plate);
+      } else {
+        const err = await res.json();
+        alert("Gagal menyimpan transaksi: " + (err.error || "Unknown error"));
+      }
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; }, 4000);
+    }
+
+    init();
+  </script>
+</body>
+</html>
