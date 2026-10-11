@@ -522,6 +522,9 @@ components:
           default: CASH
         cash_received:
           type: number
+        idempotency_key:
+          type: string
+          description: Client-generated unique transaction UUID to prevent duplicate checkout
         notes:
           type: string
         items:
@@ -551,6 +554,8 @@ components:
           type: number
         change_amount:
           type: number
+        idempotency_key:
+          type: string
         total_parts:
           type: number
         total_labor:

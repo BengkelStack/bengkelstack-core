@@ -41,9 +41,13 @@ def run_migrations(conn: Optional[sqlite3.Connection] = None, db_path: Optional[
         cursor.execute("ALTER TABLE work_orders ADD COLUMN cash_received REAL NOT NULL DEFAULT 0;")
     if "change_amount" not in wo_cols:
         cursor.execute("ALTER TABLE work_orders ADD COLUMN change_amount REAL NOT NULL DEFAULT 0;")
+    if "idempotency_key" not in wo_cols:
+        cursor.execute("ALTER TABLE work_orders ADD COLUMN idempotency_key TEXT;")
+    cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_wo_idempotency ON work_orders(idempotency_key) WHERE idempotency_key IS NOT NULL;")
 
     cursor.execute("INSERT OR IGNORE INTO workshop_settings (id, workshop_name, currency_symbol, currency_code, min_margin_pct) VALUES (1, 'BENGKELSTACK WORKSHOP OS', 'Rp', 'IDR', 25.0);")
     cursor.execute("INSERT OR IGNORE INTO schema_migrations (version) VALUES ('002_settings_and_payments');")
+    cursor.execute("INSERT OR IGNORE INTO schema_migrations (version) VALUES ('003_idempotency_keys');")
     conn.commit()
 
     if close_after:

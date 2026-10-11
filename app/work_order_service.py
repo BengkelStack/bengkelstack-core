@@ -136,10 +136,19 @@ def create_work_order(
     items: List[Dict[str, Any]],
     status: str = "COMPLETED",
     payment_method: str = "CASH",
-    cash_received: Optional[float] = None
+    cash_received: Optional[float] = None,
+    idempotency_key: Optional[str] = None
 ) -> Dict[str, Any]:
     if not items:
         raise ValueError("Cart items cannot be empty")
+
+    clean_idem = idempotency_key.strip() if idempotency_key else None
+    if clean_idem:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM work_orders WHERE idempotency_key = ?;", (clean_idem,))
+        existing_order = cursor.fetchone()
+        if existing_order:
+            return get_work_order(conn, existing_order[0])
 
     # 1. Ensure vehicle exists
     vehicle = get_or_create_vehicle(conn, plate_number, motor_model_id, customer_name)
@@ -208,10 +217,10 @@ def create_work_order(
     cursor.execute(
         """
         INSERT INTO work_orders
-            (vehicle_id, status, total_amount, payment_method, cash_received, change_amount)
-        VALUES (?, ?, ?, ?, ?, ?);
+            (vehicle_id, status, total_amount, payment_method, cash_received, change_amount, idempotency_key)
+        VALUES (?, ?, ?, ?, ?, ?, ?);
         """,
-        (vehicle_id, status, total_amount, pay_method, cash, change)
+        (vehicle_id, status, total_amount, pay_method, cash, change, clean_idem)
     )
     order_id = cursor.lastrowid
 
@@ -243,7 +252,7 @@ def get_work_order(conn: sqlite3.Connection, work_order_id: int) -> Optional[Dic
     cursor.execute(
         """
         SELECT wo.id, wo.vehicle_id, wo.status, wo.total_amount,
-               wo.payment_method, wo.cash_received, wo.change_amount, wo.created_at,
+               wo.payment_method, wo.cash_received, wo.change_amount, wo.idempotency_key, wo.created_at,
                v.plate_number, v.customer_name, v.motor_model_id,
                m.brand, m.model_name
         FROM work_orders wo
@@ -287,6 +296,7 @@ def get_work_order(conn: sqlite3.Connection, work_order_id: int) -> Optional[Dic
         "payment_method": wo_row["payment_method"] if "payment_method" in wo_row.keys() else "CASH",
         "cash_received": wo_row["cash_received"] if "cash_received" in wo_row.keys() else wo_row["total_amount"],
         "change_amount": wo_row["change_amount"] if "change_amount" in wo_row.keys() else 0.0,
+        "idempotency_key": wo_row["idempotency_key"] if "idempotency_key" in wo_row.keys() else None,
         "created_at": wo_row["created_at"],
         "vehicle": {
             "id": wo_row["vehicle_id"],

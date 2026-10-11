@@ -4,7 +4,7 @@
 
 **Edge-First Operating System for Independent Automotive Repair Workshops**
 
-[![CI Test Suite](https://img.shields.io/badge/CI-81%20Tests%20Passing-success?style=flat-square&logo=github-actions)](https://github.com/BengkelStack/bengkelstack-core)
+[![CI Test Suite](https://img.shields.io/badge/CI-83%20Tests%20Passing-success?style=flat-square&logo=github-actions)](https://github.com/BengkelStack/bengkelstack-core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 [![Security: OWASP Top 10](https://img.shields.io/badge/Security-OWASP%20API%20Hardened-brightgreen?style=flat-square)](SECURITY.md)
 [![Zero Dependency](https://img.shields.io/badge/Runtime-Python%20Stdlib%20First-blueviolet?style=flat-square)](docs/adr/ADR-001-architecture-stack.md)
@@ -99,8 +99,8 @@ python -m unittest discover -s tests -v
 ```
 
 **Results:**
-- **81 / 81 tests passing (100% Green)**
-- Execution time: **~1.5 seconds**
+- **83 / 83 tests passing (100% Green)**
+- Execution time: **~1.7 seconds**
 - Zero compiler warnings, zero deprecation warnings, zero leaks.
 
 ---

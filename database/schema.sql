@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS work_orders (
     payment_method TEXT NOT NULL DEFAULT 'CASH',
     cash_received REAL NOT NULL DEFAULT 0,
     change_amount REAL NOT NULL DEFAULT 0,
+    idempotency_key TEXT UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE RESTRICT
 );

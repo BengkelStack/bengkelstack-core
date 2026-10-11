@@ -130,7 +130,8 @@ def handle_api_request(
                     items=body["items"],
                     status=body.get("status", "COMPLETED"),
                     payment_method=body.get("payment_method", "CASH"),
-                    cash_received=float(body["cash_received"]) if body.get("cash_received") is not None else None
+                    cash_received=float(body["cash_received"]) if body.get("cash_received") is not None else None,
+                    idempotency_key=body.get("idempotency_key")
                 )
                 return 201, order
             except (KeyError, ValueError) as e:
