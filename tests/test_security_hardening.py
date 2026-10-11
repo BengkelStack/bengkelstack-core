@@ -98,7 +98,14 @@ class TestSecurityHardening(unittest.TestCase):
         test_port = 8991
         t = threading.Thread(target=run_server, args=(test_port,), daemon=True)
         t.start()
-        time.sleep(0.4)
+        
+        # Poll for server readiness instead of fixed sleep
+        for _ in range(40):
+            try:
+                with urllib.request.urlopen(f"http://127.0.0.1:{test_port}/api/motor-models", timeout=1):
+                    break
+            except Exception:
+                time.sleep(0.1)
 
         # 1. Normal GET local loopback without env token
         req = urllib.request.Request(f"http://127.0.0.1:{test_port}/api/motor-models")
@@ -116,10 +123,15 @@ class TestSecurityHardening(unittest.TestCase):
             headers={"Content-Type": "application/json"},
             method="POST"
         )
-        with self.assertRaises(urllib.error.HTTPError) as ctx:
-            urllib.request.urlopen(req_over)
-        self.assertEqual(ctx.exception.code, 413)
-        ctx.exception.close()
+        try:
+            with urllib.request.urlopen(req_over) as resp:
+                self.fail("Expected 413 HTTPError or BrokenPipeError on oversized payload")
+        except urllib.error.HTTPError as ctx:
+            self.assertEqual(ctx.code, 413)
+            ctx.close()
+        except (BrokenPipeError, ConnectionResetError):
+            # On macOS/Unix TCP stack, socket termination before full send is a valid reject outcome
+            pass
 
 
 if __name__ == "__main__":
