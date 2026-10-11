@@ -4,7 +4,7 @@
 
 **Edge-First Operating System for Independent Automotive Repair Workshops**
 
-[![CI Test Suite](https://img.shields.io/badge/CI-74%20Tests%20Passing-success?style=flat-square&logo=github-actions)](https://github.com/BengkelStack/bengkelstack-core)
+[![CI Test Suite](https://img.shields.io/badge/CI-77%20Tests%20Passing-success?style=flat-square&logo=github-actions)](https://github.com/BengkelStack/bengkelstack-core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 [![Security: OWASP Top 10](https://img.shields.io/badge/Security-OWASP%20API%20Hardened-brightgreen?style=flat-square)](SECURITY.md)
 [![Zero Dependency](https://img.shields.io/badge/Runtime-Python%20Stdlib%20First-blueviolet?style=flat-square)](docs/adr/ADR-001-architecture-stack.md)
@@ -115,9 +115,10 @@ BengkelStack is engineered strictly following formal **5-Gate Enterprise SDLC** 
 | **Gate 2** | [`docs/SRS.md`](docs/SRS.md) | IEEE 830 / ISO 25010 formal specification (FR-01 to FR-08, NFRs). |
 | **Gate 3** | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 3NF data model, state machines, and [`docs/adr/ADR-001`](docs/adr/ADR-001-architecture-stack.md). |
 | **Gate 4** | [`docs/api/openapi.yaml`](docs/api/openapi.yaml) | Contract-first OpenAPI 3.0.3 specification for all REST endpoints. |
-| **Gate 5** | [`tests/`](tests/) | 74 automated test suites covering pricing, security, vision, and orders. |
+| **Gate 5** | [`tests/`](tests/) | 77 automated test suites covering pricing, security, vision, concurrency, and orders. |
 
 ### Formal Audit PDF Reports
+- 📄 [Comprehensive SDLC Audit & Production Readiness Master Report (PDF)](docs/BengkelStack_Comprehensive_SDLC_Audit_Report.pdf)
 - 📄 [System Architecture & 5-Gate Report (PDF)](docs/BengkelStack_Architecture_Report.pdf)
 - 📄 [Institutional Security & OWASP Audit Report (PDF)](docs/BengkelStack_Institutional_Security_Report.pdf)
 - 📄 [NVIDIA Inception Qualification Pitch Report (PDF)](docs/BengkelStack_NVIDIA_Inception_Report.pdf)
