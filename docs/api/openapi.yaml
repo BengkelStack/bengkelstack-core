@@ -1,0 +1,499 @@
+openapi: 3.0.3
+info:
+  title: BengkelStack Workshop OS Core API
+  description: Formal REST API contract for BengkelStack local POS & cloud synchronization gateway.
+  version: 1.0.0
+  contact:
+    name: BengkelStack Engineering
+    email: founder@bengkelstack.com
+    url: https://bengkelstack.com
+
+servers:
+  - url: http://localhost:8089
+    description: Local Workshop Edge POS Server
+  - url: https://api.bengkelstack.com/v1
+    description: Staged Cloud Multi-Tenant Gateway
+
+paths:
+  /api/motor-models:
+    get:
+      summary: List or search motorcycle models
+      operationId: listMotorModels
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Fuzzy search term for model name or brand
+      responses:
+        '200':
+          description: List of matching motorcycle models
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MotorModel'
+
+  /api/parts:
+    get:
+      summary: List or search parts catalog
+      operationId: listParts
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Search term for part name, SKU, or category
+      responses:
+        '200':
+          description: List of spare parts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Part'
+
+  /api/services:
+    get:
+      summary: List or search workshop services
+      operationId: listServices
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Search term for service name or code
+      responses:
+        '200':
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Service'
+
+  /api/vehicle-lookup:
+    get:
+      summary: Lookup vehicle profile and owner by plate number
+      operationId: lookupVehicleByPlate
+      parameters:
+        - name: plate
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "B 1234 XYZ"
+          description: Indonesian vehicle registration number
+      responses:
+        '200':
+          description: Vehicle details or null if unregistered
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Vehicle'
+                  - type: 'null'
+        '400':
+          description: Missing plate parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/history/plate:
+    get:
+      summary: Retrieve complete service history for a vehicle plate
+      operationId: getHistoryByPlate
+      parameters:
+        - name: plate
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "B 1234 XYZ"
+      responses:
+        '200':
+          description: Historical service records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkOrderSummary'
+        '400':
+          description: Missing plate parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reference/model:
+    get:
+      summary: Get installation fee matrix for a specific motorcycle model
+      operationId: getModelPricingReference
+      parameters:
+        - name: motor_model_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Reference pricing matrix
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelPricingReference'
+        '400':
+          description: Invalid or missing motor_model_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/calculate:
+    post:
+      summary: In-memory dynamic dual-tier cart pricing calculation
+      operationId: calculateCartPricing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculateCartRequest'
+      responses:
+        '200':
+          description: Calculated pricing breakdown
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalculateCartResponse'
+        '400':
+          description: Invalid payload or missing items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/work-orders:
+    post:
+      summary: Create and persist a new work order transaction
+      operationId: createWorkOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkOrderRequest'
+      responses:
+        '201':
+          description: Work order successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrder'
+        '400':
+          description: Validation error in work order payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/work-orders/{id}:
+    get:
+      summary: Fetch single work order by ID
+      operationId: getWorkOrder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Full work order details with line items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrder'
+        '404':
+          description: Work order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Invalid ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/master/quick-update:
+    post:
+      summary: Instant price or installation fee update from POS modal
+      operationId: quickUpdateMasterPrice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuickUpdateRequest'
+      responses:
+        '200':
+          description: Price updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          description: Invalid update parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    MotorModel:
+      type: object
+      required: [id, name, brand, engine_category]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        brand:
+          type: string
+        engine_category:
+          type: string
+          enum: [MATIC, BEBEK, SPORT, BIGBIKE]
+
+    Part:
+      type: object
+      required: [id, name, retail_price, default_install_fee]
+      properties:
+        id:
+          type: integer
+        sku:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        purchase_cost:
+          type: number
+        retail_price:
+          type: number
+        default_install_fee:
+          type: number
+        stock_qty:
+          type: integer
+
+    Service:
+      type: object
+      required: [id, name, fee]
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        fee:
+          type: number
+        estimated_minutes:
+          type: integer
+
+    Vehicle:
+      type: object
+      required: [id, plate_number, motor_model_id, customer_name]
+      properties:
+        id:
+          type: integer
+        plate_number:
+          type: string
+        motor_model_id:
+          type: integer
+        motor_model_name:
+          type: string
+        customer_name:
+          type: string
+        phone_number:
+          type: string
+
+    CalculateCartRequest:
+      type: object
+      required: [items]
+      properties:
+        motor_model_id:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItemInput'
+
+    CartItemInput:
+      type: object
+      required: [item_type, item_id, quantity, action_type]
+      properties:
+        item_type:
+          type: string
+          enum: [PART, SERVICE]
+        item_id:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+        action_type:
+          type: string
+          enum: [TAKE_AWAY, INSTALL]
+
+    CalculateCartResponse:
+      type: object
+      required: [items, total_parts, total_labor, grand_total]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              item_type:
+                type: string
+              item_id:
+                type: integer
+              name:
+                type: string
+              quantity:
+                type: integer
+              action_type:
+                type: string
+              unit_price:
+                type: number
+              unit_install_fee:
+                type: number
+              is_custom_fee:
+                type: boolean
+              item_total:
+                type: number
+        total_parts:
+          type: number
+        total_labor:
+          type: number
+        grand_total:
+          type: number
+
+    CreateWorkOrderRequest:
+      type: object
+      required: [plate_number, motor_model_id, customer_name, items]
+      properties:
+        plate_number:
+          type: string
+        motor_model_id:
+          type: integer
+        customer_name:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, IN_PROGRESS, COMPLETED, CANCELLED]
+          default: COMPLETED
+        notes:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItemInput'
+
+    WorkOrder:
+      type: object
+      required: [id, order_number, plate_number, customer_name, status, grand_total]
+      properties:
+        id:
+          type: integer
+        order_number:
+          type: string
+        plate_number:
+          type: string
+        motor_model_id:
+          type: integer
+        customer_name:
+          type: string
+        status:
+          type: string
+        total_parts:
+          type: number
+        total_labor:
+          type: number
+        grand_total:
+          type: number
+        created_at:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+
+    WorkOrderSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_number:
+          type: string
+        date:
+          type: string
+        status:
+          type: string
+        grand_total:
+          type: number
+        item_count:
+          type: integer
+
+    ModelPricingReference:
+      type: object
+      properties:
+        motor_model_id:
+          type: integer
+        motor_model_name:
+          type: string
+        parts:
+          type: array
+          items:
+            type: object
+
+    QuickUpdateRequest:
+      type: object
+      required: [item_type, item_id]
+      properties:
+        item_type:
+          type: string
+          enum: [PART, SERVICE]
+        item_id:
+          type: integer
+        new_price:
+          type: number
+        new_install_fee:
+          type: number
+        motor_model_id:
+          type: integer
+        save_as_model_custom:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string

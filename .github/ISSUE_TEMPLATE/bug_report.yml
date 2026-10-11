@@ -1,0 +1,40 @@
+name: Bug Report
+description: Create a report to help us improve BengkelStack
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: input
+    id: version
+    attributes:
+      label: BengkelStack Version
+      description: What version or git commit are you running?
+      placeholder: e.g. v1.0.0 or git commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe what you observed versus what was expected.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: List the steps to reproduce the issue.
+      placeholder: |
+        1. Open POS at http://localhost:8089
+        2. Enter plate number 'B 1234 XYZ'
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Terminal or Browser Console Logs
+      description: Paste any error messages or tracebacks here.
+      render: shell

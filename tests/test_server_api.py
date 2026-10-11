@@ -114,5 +114,64 @@ class TestServerApi(unittest.TestCase):
         self.assertIn("catalog_estimates", ref)
 
 
+    def test_security_hardening_headers_and_auth(self):
+        # Test auth helper in security
+        from app.security import verify_auth
+        ok, code, msg = verify_auth({"Authorization": "Bearer test"}, "192.168.1.1")
+        self.assertFalse(ok)
+        self.assertEqual(code, 403)
+
+    def test_thermal_receipt_api(self):
+        body = {
+            "plate_number": "B 9999 XYZ",
+            "motor_model_id": self.motor["id"],
+            "customer_name": "Dimas Budi",
+            "items": [
+                {"item_type": "part", "item_id": self.part["id"], "action_type": "installed"},
+                {"item_type": "service", "item_id": self.svc["id"], "action_type": "installed"}
+            ]
+        }
+        _, order = handle_api_request(self.conn, "POST", "/api/work-orders", body)
+        wo_id = order["id"]
+
+        status, receipt_data = handle_api_request(self.conn, "GET", f"/api/work-orders/{wo_id}/receipt", None)
+        self.assertEqual(status, 200)
+        self.assertEqual(receipt_data["work_order_id"], wo_id)
+        self.assertIn("BENGKELSTACK WORKSHOP OS", receipt_data["receipt_text"])
+        self.assertIn("B 9999 XYZ", receipt_data["receipt_text"])
+        self.assertIn("Dimas Budi", receipt_data["receipt_text"])
+        self.assertIn("TOTAL BAYAR:", receipt_data["receipt_text"])
+
+    def test_invoice_scan_api_endpoint(self):
+        # Scan raw invoice text via POST /api/invoices/scan
+        body = {
+            "raw_text": """
+            PT ASTRA OTOPARTS TBK
+            FAKTUR PENJUALAN: INV-AOP-SCAN-01
+            TANGGAL: 10/10/2026
+            OIL-01 OLI MPX2 5 PCS @ 42000 = 210000
+            SUBTOTAL: 210000
+            PPN: 23100
+            TOTAL: 233100
+            """,
+            "apply_update": True
+        }
+        status, data = handle_api_request(self.conn, "POST", "/api/invoices/scan", body)
+        self.assertEqual(status, 200)
+        self.assertEqual(data["invoice"]["vendor"], "Astra Otoparts")
+        self.assertEqual(data["invoice"]["invoice_number"], "INV-AOP-SCAN-01")
+        self.assertTrue(data["financial_audit"]["is_financially_reconciled"])
+        self.assertEqual(data["financial_audit"]["items_count"], 1)
+        self.assertEqual(data["financial_audit"]["matched_count"], 1)
+        self.assertEqual(data["reconciliation"][0]["match_type"], "EXACT_SKU")
+        self.assertEqual(data["reconciliation"][0]["db_sku"], "OIL-01")
+        self.assertTrue(data["reconciliation"][0]["auto_updated"])
+
+    def test_invoice_scan_api_missing_payload(self):
+        status, data = handle_api_request(self.conn, "POST", "/api/invoices/scan", {})
+        self.assertEqual(status, 400)
+        self.assertIn("error", data)
+
+
 if __name__ == "__main__":
     unittest.main()

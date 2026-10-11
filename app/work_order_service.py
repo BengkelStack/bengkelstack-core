@@ -14,6 +14,7 @@ from app.custom_fee_repository import (
     set_custom_install_fee,
     list_custom_fees_for_model,
 )
+from app.security import sanitize_input_str
 
 
 def normalize_plate(plate: str) -> str:
@@ -43,11 +44,12 @@ def get_or_create_vehicle(
     motor_model_id: int,
     customer_name: str
 ) -> Dict[str, Any]:
-    # ponytail: clean find-or-create logic
+    # ponytail: clean find-or-create logic with strict input sanitization
     norm_plate = normalize_plate(plate_number)
+    clean_name = sanitize_input_str(customer_name)
     if not norm_plate:
         raise ValueError("plate_number cannot be empty")
-    if not customer_name.strip():
+    if not clean_name:
         raise ValueError("customer_name cannot be empty")
 
     existing = find_vehicle_by_plate(conn, norm_plate)
@@ -56,7 +58,7 @@ def get_or_create_vehicle(
         cursor = conn.cursor()
         cursor.execute(
             "UPDATE vehicles SET motor_model_id = ?, customer_name = ? WHERE id = ?;",
-            (motor_model_id, customer_name.strip(), existing["id"])
+            (motor_model_id, clean_name, existing["id"])
         )
         conn.commit()
         return find_vehicle_by_plate(conn, norm_plate)
@@ -64,7 +66,7 @@ def get_or_create_vehicle(
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO vehicles (plate_number, motor_model_id, customer_name) VALUES (?, ?, ?);",
-        (norm_plate, motor_model_id, customer_name.strip())
+        (norm_plate, motor_model_id, clean_name)
     )
     conn.commit()
     return find_vehicle_by_plate(conn, norm_plate)
@@ -414,5 +416,43 @@ def get_model_pricing_reference(conn: sqlite3.Connection, motor_model_id: int) -
             "services": services_estimates,
         }
     }
+
+
+def format_thermal_receipt(wo: Dict[str, Any], width: int = 40) -> str:
+    # ponytail: stdlib clean mono-spaced formatting for 58mm/80mm thermal ESC/POS
+    lines = []
+    lines.append("=" * width)
+    lines.append("BENGKELSTACK WORKSHOP OS".center(width))
+    lines.append("LAYANAN SERVIS & SUKU CADANG".center(width))
+    lines.append("=" * width)
+
+    v = wo.get("vehicle", {})
+    lines.append(f"No. Nota : WO-{wo.get('id', 0):05d}")
+    lines.append(f"Waktu    : {wo.get('created_at', '-')}")
+    lines.append(f"Plat     : {v.get('plate_number', '-')} ({v.get('brand', '')} {v.get('model_name', '')})")
+    lines.append(f"Pelanggan: {v.get('customer_name', '-')}")
+    lines.append(f"Status   : {wo.get('status', 'COMPLETED')}")
+    lines.append("-" * width)
+    lines.append(f"{'ITEM':<20} {'AKSI':<8} {'SUBTOTAL':>10}")
+    lines.append("-" * width)
+
+    for it in wo.get("items", []):
+        name = (it.get("item_name") or "Item")[:19]
+        action = "PASANG" if it.get("action_type") == "installed" else "BELI"
+        subtotal = f"Rp {it.get('subtotal', 0):,.0f}".replace(",", ".")
+        lines.append(f"{name:<20} {action:<8} {subtotal:>10}")
+        if it.get("action_type") == "installed" and it.get("install_fee", 0) > 0 and it.get("item_type") == "part":
+            part_p = f"Rp {it.get('price', 0):,.0f}".replace(",", ".")
+            fee_p = f"Rp {it.get('install_fee', 0):,.0f}".replace(",", ".")
+            lines.append(f"  Part: {part_p} | Ongkos: {fee_p}")
+
+    lines.append("-" * width)
+    total_str = f"Rp {wo.get('total_amount', 0):,.0f}".replace(",", ".")
+    lines.append(f"{'TOTAL BAYAR:':<24} {total_str:>15}")
+    lines.append("=" * width)
+    lines.append("Terima kasih atas kunjungan Anda!".center(width))
+    lines.append("Garansi Servis 7 Hari / 500 KM".center(width))
+    lines.append("=" * width)
+    return "\n".join(lines)
 
 

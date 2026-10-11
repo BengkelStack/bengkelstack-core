@@ -1,0 +1,58 @@
+name: CI Test Suite & Security Audit
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run Unit & Integration Test Suite
+        run: |
+          python -m unittest discover -s tests -v
+
+      - name: Run Zero Secret Leak Security Check
+        shell: bash
+        run: |
+          python -c "
+          import os, re
+          secret_patterns = [
+              re.compile(r'(?:api[_-]?key|secret|password|bearer|auth[_-]?token)\s*[:=]\s*[\'\"][A-Za-z0-9_\-\.]{12,}[\'\"]', re.I),
+              re.compile(r'sk-[A-Za-z0-9]{20,}', re.I),
+              re.compile(r'ghp_[A-Za-z0-9]{20,}', re.I)
+          ]
+          leaks = []
+          for dirpath, _, filenames in os.walk('.'):
+              if '.git' in dirpath or '__pycache__' in dirpath or '.github' in dirpath:
+                  continue
+              for f in filenames:
+                  if f.endswith(('.py', '.html', '.js', '.yaml', '.json', '.sql')):
+                      fp = os.path.join(dirpath, f)
+                      with open(fp, 'r', encoding='utf-8', errors='ignore') as fh:
+                          for idx, line in enumerate(fh, 1):
+                              for pat in secret_patterns:
+                                  if pat.search(line):
+                                      leaks.append((f, idx, line.strip()))
+          if leaks:
+              print('FAIL: Leaks detected:', leaks)
+              exit(1)
+          print('PASS: Zero credential leaks detected.')
+          "
