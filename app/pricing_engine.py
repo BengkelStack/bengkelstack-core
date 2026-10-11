@@ -89,6 +89,7 @@ def calculate_cart_pricing(
     total_amount = 0.0
 
     for item in items:
+        qty = int(item.get("qty", item.get("quantity", 1)))
         calc = calculate_item_pricing(
             conn,
             item_type=item["item_type"],
@@ -96,8 +97,12 @@ def calculate_cart_pricing(
             action_type=item.get("action_type", "installed"),
             motor_model_id=motor_model_id
         )
-        calculated_items.append(calc)
-        total_amount += calc["subtotal"]
+        item_subtotal = round(calc["subtotal"] * qty, 2)
+        calc_entry = dict(calc)
+        calc_entry["quantity"] = qty
+        calc_entry["subtotal"] = item_subtotal
+        calculated_items.append(calc_entry)
+        total_amount += item_subtotal
 
     return {
         "items": calculated_items,

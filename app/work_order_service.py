@@ -155,6 +155,7 @@ def create_work_order(
         item_type = item["item_type"]
         item_id = item["item_id"]
         action_type = item.get("action_type", "installed")
+        qty = int(item.get("qty", item.get("quantity", 1)))
 
         # Base calculation from pricing engine
         calc = calculate_item_pricing(conn, item_type, item_id, action_type, motor_model_id=motor_model_id)
@@ -166,7 +167,7 @@ def create_work_order(
         if action_type == "takeaway":
             actual_install_fee = 0.0
 
-        subtotal = round(actual_price + actual_install_fee, 2)
+        subtotal = round((actual_price + actual_install_fee) * qty, 2)
 
         if save_as_std:
             quick_update_master_price(

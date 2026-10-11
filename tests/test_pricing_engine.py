@@ -105,6 +105,16 @@ class TestPricingEngine(unittest.TestCase):
         # Total = 55.000 + 230.000 + 50.000 = 335.000
         self.assertEqual(cart["total_amount"], 335000.0)
 
+    def test_cart_quantity_multiplication(self):
+        # Test 2 Oli takeaway (55.000 x 2 = 110.000)
+        cart_items = [
+            {"item_type": "part", "item_id": self.part_oli["id"], "action_type": "takeaway", "quantity": 2}
+        ]
+        cart = calculate_cart_pricing(self.conn, cart_items)
+        self.assertEqual(cart["items"][0]["quantity"], 2)
+        self.assertEqual(cart["items"][0]["subtotal"], 110000.0)
+        self.assertEqual(cart["total_amount"], 110000.0)
+
     def test_invalid_action_type_raises_value_error(self):
         with self.assertRaises(ValueError):
             calculate_item_pricing(
