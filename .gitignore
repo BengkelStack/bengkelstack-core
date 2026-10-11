@@ -2,4 +2,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+.coverage
+htmlcov/
+*.stackdump
+.env
+.env.local
 database/*.db
+database/*.db-wal
+database/*.db-shm
+*.backup_*
+.DS_Store
+Thumbs.db
