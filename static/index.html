@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kasir Bengkel & Pricing Engine</title>
+  <title>Workshop POS &amp; Pricing Engine - BengkelStack</title>
   <style>
     :root {
       --bg: #0f172a;
@@ -76,99 +76,99 @@
   <div class="container">
     <header>
       <div>
-        <h1 id="headerTitle">Kasir Bengkel &amp; Pricing Engine</h1>
-        <p style="color: var(--text-muted); font-size: 0.85rem;" id="headerSubtitle">Perhitungan otomatis Bawa Pulang (Retail) vs Pasang di Tempat (Retail + Ongkos)</p>
+        <h1 id="headerTitle">Workshop POS &amp; Pricing Engine</h1>
+        <p style="color: var(--text-muted); font-size: 0.85rem;" id="headerSubtitle">Dynamic pricing: Takeaway (Retail) vs In-Shop Installation (Retail + Labor)</p>
       </div>
       <div style="display: flex; gap: 10px; align-items: center;">
-        <button class="btn btn-outline" onclick="openInvoiceModal()" style="font-size: 0.85rem;">📷 Scan Faktur Supplier</button>
-        <button class="btn btn-outline" onclick="openSettingsModal()" style="font-size: 0.85rem;">⚙️ Pengaturan Toko</button>
+        <button class="btn btn-outline" onclick="openInvoiceModal()" style="font-size: 0.85rem;">📷 Scan Supplier Invoice</button>
+        <button class="btn btn-outline" onclick="openSettingsModal()" style="font-size: 0.85rem;">⚙️ Workshop Settings</button>
         <span class="badge badge-primary" id="headerCurrencyBadge">IDR (Rp)</span>
       </div>
     </header>
 
     <div class="grid">
-      <!-- PANEL KIRI: INFO KENDARAAN & TAMBAH ITEM -->
+      <!-- LEFT PANEL: VEHICLE PROFILE & CATALOG -->
       <div>
-        <!-- Data Kendaraan -->
+        <!-- Vehicle Profile -->
         <div class="card" style="margin-bottom: 20px;">
-          <div class="card-title">Data Kendaraan</div>
+          <div class="card-title">Vehicle Profile</div>
           <div class="form-group">
-            <label for="plateInput">Nomor Plat (Contoh: B 1234 XYZ)</label>
+            <label for="plateInput">License Plate (e.g. B 1234 XYZ / TX 9988 USA)</label>
             <div class="plate-input-wrapper">
               <input type="text" id="plateInput" placeholder="B 1234 XYZ" style="text-transform: uppercase;">
-              <button class="btn btn-outline" id="btnLookupPlate">Cek</button>
+              <button class="btn btn-outline" id="btnLookupPlate">Lookup</button>
             </div>
             <div id="plateAlert" class="status-alert"></div>
           </div>
 
           <div class="form-group">
-            <label for="motorSelect">Model Motor</label>
+            <label for="motorSelect">Motorcycle Model</label>
             <select id="motorSelect">
-              <option value="">-- Pilih Model Motor --</option>
+              <option value="">-- Select Motorcycle Model --</option>
             </select>
           </div>
 
           <div class="form-group">
-            <label for="customerName">Nama Pelanggan</label>
-            <input type="text" id="customerName" placeholder="Nama Pemilik">
+            <label for="customerName">Customer Name</label>
+            <input type="text" id="customerName" placeholder="Owner / Driver Name">
           </div>
         </div>
 
-        <!-- Riwayat Servis Kendaraan (Plat Nomor) -->
+        <!-- Vehicle Service History -->
         <div class="card" id="historyCard" style="margin-bottom: 20px; display: none;">
           <div class="card-title" style="justify-content: space-between;">
-            <span>Riwayat Servis Kendaraan</span>
-            <span id="historyCountBadge" class="badge badge-primary">0 Riwayat</span>
+            <span>Vehicle Service History</span>
+            <span id="historyCountBadge" class="badge badge-primary">0 Visits</span>
           </div>
           <div id="historyList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
             <!-- History items -->
           </div>
         </div>
 
-        <!-- Tambah Item ke Keranjang -->
+        <!-- Add Items to Cart -->
         <div class="card">
-          <div class="card-title">Katalog & Tambah Item</div>
+          <div class="card-title">Catalog &amp; Add Items</div>
           <div class="form-group">
-            <label>Tipe Item</label>
+            <label>Item Category</label>
             <select id="itemTypeSelect" onchange="renderItemDropdown()">
-              <option value="part">Suku Cadang (Spare Part)</option>
-              <option value="service">Jasa Servis</option>
+              <option value="part">Spare Part</option>
+              <option value="service">Labor Service</option>
             </select>
           </div>
 
           <div class="form-group">
-            <label>Pilih Barang / Jasa</label>
+            <label>Select Item / Service</label>
             <select id="itemSelect">
-              <option value="">-- Memuat Katalog --</option>
+              <option value="">-- Loading Catalog --</option>
             </select>
           </div>
 
-          <button class="btn btn-primary" style="width: 100%; margin-top: 8px;" onclick="addItemToCart()">+ Tambah ke Keranjang</button>
+          <button class="btn btn-primary" style="width: 100%; margin-top: 8px;" onclick="addItemToCart()">+ Add to Order</button>
         </div>
       </div>
 
-      <!-- PANEL KANAN: KERANJANG TRANSAKSI & PRICING ENGINE -->
+      <!-- RIGHT PANEL: WORK ORDER CART & PRICING ENGINE -->
       <div class="card">
         <div class="card-title" style="justify-content: space-between;">
-          <span>Keranjang Pekerjaan & Estimasi Kasir</span>
-          <span id="cartCountBadge" class="badge badge-primary">0 Item</span>
+          <span>Work Order Cart &amp; Pricing Estimates</span>
+          <span id="cartCountBadge" class="badge badge-primary">0 Items</span>
         </div>
 
         <table>
           <thead>
             <tr>
-              <th>Item / Layanan</th>
-              <th style="width: 140px;">Opsi Penjualan</th>
+              <th>Item / Service</th>
+              <th style="width: 140px;">Pricing Mode</th>
               <th style="width: 65px;">Qty</th>
-              <th>Harga Part</th>
-              <th>Ongkos Pasang</th>
+              <th>Part Retail</th>
+              <th>Labor Fee</th>
               <th>Subtotal</th>
-              <th style="text-align: right;">Aksi</th>
+              <th style="text-align: right;">Action</th>
             </tr>
           </thead>
           <tbody id="cartTableBody">
             <tr>
-              <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Keranjang kosong. Pilih barang atau jasa untuk menghitung estimasi.</td>
+              <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Cart is empty. Select catalog items to compute real-time estimates.</td>
             </tr>
           </tbody>
         </table>
@@ -176,8 +176,8 @@
         <!-- Total Box -->
         <div class="total-box">
           <div>
-            <div class="total-label">Total Tagihan Transaksi</div>
-            <div style="font-size: 0.8rem; color: var(--text-muted);">Pricing Engine realtime auto-calculated</div>
+            <div class="total-label">Total Amount Due</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Real-time pricing engine auto-calculated</div>
           </div>
           <div class="total-amount" id="totalAmountDisplay">Rp 0</div>
         </div>
@@ -185,42 +185,42 @@
         <!-- Payment & Cash Tender Section -->
         <div style="margin-top: 14px; background: #0b1120; border: 1px solid var(--border); border-radius: 6px; padding: 14px; display: grid; grid-template-columns: 180px 1fr 180px; gap: 14px; align-items: center;">
           <div>
-            <label style="font-size: 0.8rem; margin-bottom: 4px;">Metode Pembayaran</label>
+            <label style="font-size: 0.8rem; margin-bottom: 4px;">Payment Method</label>
             <select id="paymentMethodSelect" onchange="handlePaymentMethodChange()">
-              <option value="CASH">Tunai (Cash)</option>
-              <option value="QRIS">QRIS Dinamis</option>
-              <option value="TRANSFER">Transfer Bank</option>
-              <option value="CARD">Kartu Debit/Kredit</option>
+              <option value="CASH">Cash Tender</option>
+              <option value="QRIS">Dynamic QR / Digital</option>
+              <option value="TRANSFER">Bank Wire / Transfer</option>
+              <option value="CARD">Debit / Credit Card</option>
             </select>
           </div>
           <div id="cashInputWrapper">
-            <label style="font-size: 0.8rem; margin-bottom: 4px;">Uang Tunai Diterima</label>
+            <label style="font-size: 0.8rem; margin-bottom: 4px;">Cash Tendered</label>
             <input type="number" id="cashReceivedInput" placeholder="0" oninput="updateChangeDisplay()">
           </div>
           <div style="text-align: right;">
-            <div style="font-size: 0.75rem; color: var(--text-muted);">Kembalian</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">Change Due</div>
             <div id="changeDisplay" style="font-size: 1.2rem; font-weight: 700; color: #10b981;">Rp 0</div>
           </div>
         </div>
 
         <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 12px;">
-          <button class="btn btn-outline" onclick="resetCart()">Kosongkan</button>
-          <button class="btn btn-success" id="btnCheckout" style="font-size: 1rem; padding: 12px 24px;" onclick="checkoutOrder()">Simpan Transaksi Kasir</button>
+          <button class="btn btn-outline" onclick="resetCart()">Clear Cart</button>
+          <button class="btn btn-success" id="btnCheckout" style="font-size: 1rem; padding: 12px 24px;" onclick="checkoutOrder()">Checkout Work Order</button>
         </div>
 
-        <!-- PANEL REFERENSI MODEL MOTOR -->
+        <!-- MOTORCYCLE MODEL REFERENCE PANEL -->
         <div class="card" id="modelRefCard" style="margin-top: 24px; display: none; background: #131d31;">
           <div class="card-title" style="justify-content: space-between; margin-bottom: 12px;">
             <div>
-              <span id="modelRefTitle" style="color: var(--accent);">Referensi Model Motor</span>
-              <span style="font-size:0.75rem; color:var(--text-muted); display:block; font-weight:normal; margin-top:2px;">Histori pengerjaan & acuan tarif terstandarisasi untuk tipe motor ini</span>
+              <span id="modelRefTitle" style="color: var(--accent);">Model Reference Guide</span>
+              <span style="font-size:0.75rem; color:var(--text-muted); display:block; font-weight:normal; margin-top:2px;">Service history &amp; standardized labor rates for this model</span>
             </div>
-            <span id="modelRefBadge" class="badge badge-custom">Model Dipilih</span>
+            <span id="modelRefBadge" class="badge badge-custom">Selected Model</span>
           </div>
 
           <div style="display:flex; gap:8px; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:8px;">
-            <button class="toggle-btn active" id="btnTabModelHist" onclick="switchModelTab('hist')">Histori Part/Jasa Pernah Diterapkan</button>
-            <button class="toggle-btn" id="btnTabModelEst" onclick="switchModelTab('est')">Katalog & Estimasi Tarif Pasang</button>
+            <button class="toggle-btn active" id="btnTabModelHist" onclick="switchModelTab('hist')">Historical Parts / Services Used</button>
+            <button class="toggle-btn" id="btnTabModelEst" onclick="switchModelTab('est')">Catalog &amp; Labor Estimates</button>
           </div>
 
           <!-- TAB 1: HISTORI PENERAPAN PADA MODEL INI -->
@@ -245,14 +245,14 @@
   <div id="receiptModal" class="modal-backdrop">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 style="font-size:1.1rem; color:var(--accent);">Struk Kasir Thermal (ESC/POS)</h3>
+        <h3 style="font-size:1.1rem; color:var(--accent);">Thermal Receipt Preview (ESC/POS)</h3>
         <button class="modal-close" onclick="closeReceiptModal()">&times;</button>
       </div>
-      <div id="receiptContent" class="receipt-paper">Memuat struk...</div>
+      <div id="receiptContent" class="receipt-paper">Loading receipt...</div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
-        <button class="btn btn-outline" onclick="copyReceiptText()">Salin Teks</button>
-        <button class="btn btn-primary" onclick="printReceiptDirect()">Cetak / Print</button>
-        <button class="btn btn-outline" onclick="closeReceiptModal()">Tutup</button>
+        <button class="btn btn-outline" onclick="copyReceiptText()">Copy Text</button>
+        <button class="btn btn-primary" onclick="printReceiptDirect()">Print Receipt</button>
+        <button class="btn btn-outline" onclick="closeReceiptModal()">Close</button>
       </div>
     </div>
   </div>
@@ -262,32 +262,32 @@
     <div class="modal-card" style="max-width:760px;">
       <div class="modal-header">
         <div>
-          <h3 style="font-size:1.1rem; color:var(--accent);">Vision AI: Scanner &amp; Rekonsiliasi Faktur Supplier</h3>
-          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Ekstraksi instan nota Astra Otoparts, Yamaha, Denso dengan determinisme finansial</p>
+          <h3 style="font-size:1.1rem; color:var(--accent);">Vision AI: Supplier Invoice Scanner &amp; Reconciliation</h3>
+          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Instant OCR extraction for Astra Otoparts, Yamaha, Denso with financial determinism</p>
         </div>
         <button class="modal-close" onclick="closeInvoiceModal()">&times;</button>
       </div>
       <div class="form-group">
-        <label>Tempel / Ketik Teks Nota Faktur Supplier:</label>
-        <textarea id="rawInvoiceInput" rows="5" placeholder="Contoh:&#10;PT ASTRA OTOPARTS TBK&#10;FAKTUR: INV-001&#10;OIL-MPX2 OLI AHM 10 PCS @ 42000 = 420000&#10;SUBTOTAL: 420000&#10;PPN: 46200&#10;TOTAL: 466200" style="font-family:monospace; font-size:0.85rem;"></textarea>
+        <label>Paste / Enter Raw Invoice Text:</label>
+        <textarea id="rawInvoiceInput" rows="5" placeholder="Example:&#10;PT ASTRA OTOPARTS TBK&#10;FAKTUR: INV-001&#10;OIL-MPX2 OLI AHM 10 PCS @ 42000 = 420000&#10;SUBTOTAL: 420000&#10;PPN: 46200&#10;TOTAL: 466200" style="font-family:monospace; font-size:0.85rem;"></textarea>
       </div>
       <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
         <input type="checkbox" id="autoUpdateCatalogCheck" checked style="width:auto;">
-        <label for="autoUpdateCatalogCheck" style="font-size:0.85rem; margin:0; cursor:pointer;">Perbarui harga modal ke database master jika cocok (Auto-update catalog)</label>
+        <label for="autoUpdateCatalogCheck" style="font-size:0.85rem; margin:0; cursor:pointer;">Update wholesale costs to catalog if matched (Auto-update catalog)</label>
       </div>
-      <button class="btn btn-primary" style="width:100%;" onclick="submitInvoiceScan()">⚡ Proses Ekstraksi &amp; Rekonsiliasi</button>
+      <button class="btn btn-primary" style="width:100%;" onclick="submitInvoiceScan()">⚡ Process Extraction &amp; Reconciliation</button>
       
       <!-- Scan Result Box -->
       <div id="scanResultBox" style="margin-top:18px; display:none; background:#0b1120; border:1px solid var(--border); border-radius:6px; padding:16px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
           <div id="scanVendorTitle" style="font-weight:700; color:#fff;">-</div>
-          <span id="scanAuditBadge" class="badge badge-primary">Audit Lolos</span>
+          <span id="scanAuditBadge" class="badge badge-primary">Audit Passed</span>
         </div>
         <div id="scanAuditStats" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">-</div>
         <div style="max-height:200px; overflow-y:auto;">
           <table style="font-size:0.8rem; margin:0;">
             <thead>
-              <tr><th>SKU Faktur</th><th>Part Cocok</th><th>HPP Baru</th><th>Status</th></tr>
+              <tr><th>Invoice SKU</th><th>Matched Part</th><th>New Cost</th><th>Status</th></tr>
             </thead>
             <tbody id="scanItemsBody"></tbody>
           </table>
@@ -296,47 +296,47 @@
     </div>
   </div>
 
-  <!-- MODAL 3: PENGATURAN TOKO & MULTI-CURRENCY -->
+  <!-- MODAL 3: WORKSHOP SETTINGS & MULTI-CURRENCY -->
   <div id="settingsModal" class="modal-backdrop">
     <div class="modal-card" style="max-width:540px;">
       <div class="modal-header">
-        <h3 style="font-size:1.1rem; color:var(--accent);">Pengaturan Toko &amp; Multi-Currency</h3>
+        <h3 style="font-size:1.1rem; color:var(--accent);">Workshop Settings &amp; Multi-Currency</h3>
         <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
       </div>
       <div class="form-group">
-        <label>Nama Bengkel</label>
-        <input type="text" id="settingWsName" placeholder="Nama Bengkel Anda">
+        <label>Workshop Name</label>
+        <input type="text" id="settingWsName" placeholder="Your Workshop Name">
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
         <div class="form-group">
-          <label>Simbol Mata Uang</label>
-          <input type="text" id="settingCurrSymbol" placeholder="Contoh: Rp, $, ₫, ₹">
+          <label>Currency Symbol</label>
+          <input type="text" id="settingCurrSymbol" placeholder="e.g. $, Rp, ₫, €">
         </div>
         <div class="form-group">
-          <label>Kode Mata Uang</label>
-          <input type="text" id="settingCurrCode" placeholder="Contoh: IDR, USD, VND">
+          <label>Currency Code</label>
+          <input type="text" id="settingCurrCode" placeholder="e.g. USD, IDR, EUR">
         </div>
       </div>
       <div class="form-group">
-        <label>Header Struk</label>
-        <input type="text" id="settingReceiptHeader" placeholder="LAYANAN SERVIS & SUKU CADANG">
+        <label>Receipt Header</label>
+        <input type="text" id="settingReceiptHeader" placeholder="SERVICE & REPAIR CENTER">
       </div>
       <div class="form-group">
-        <label>Footer Struk / Garansi</label>
-        <input type="text" id="settingReceiptFooter" placeholder="Garansi Servis 7 Hari / 500 KM">
+        <label>Receipt Footer / Warranty Notice</label>
+        <input type="text" id="settingReceiptFooter" placeholder="Service Warranty 7 Days / 500 KM">
       </div>
       <div class="form-group">
-        <label>Target Margin Ritel Minimal (%)</label>
+        <label>Target Minimum Retail Margin (%)</label>
         <input type="number" id="settingMinMargin" placeholder="25">
       </div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
-        <button class="btn btn-outline" onclick="closeSettingsModal()">Batal</button>
-        <button class="btn btn-success" onclick="saveSettings()">Simpan Pengaturan</button>
+        <button class="btn btn-outline" onclick="closeSettingsModal()">Cancel</button>
+        <button class="btn btn-success" onclick="saveSettings()">Save Settings</button>
       </div>
     </div>
   </div>
 
-  <div id="toast" class="toast">Transaksi Berhasil Disimpan!</div>
+  <div id="toast" class="toast">Work Order Saved Successfully!</div>
 
   <script>
     let motorModels = [];
@@ -386,7 +386,7 @@
 
       // Populate motor select
       const motorSelect = document.getElementById('motorSelect');
-      motorSelect.innerHTML = '<option value="">-- Pilih Model Motor --</option>' +
+      motorSelect.innerHTML = '<option value="">-- Select Motorcycle Model --</option>' +
         motorModels.map(m => `<option value="${m.id}">${escapeHtml(m.brand)} - ${escapeHtml(m.model_name)}</option>`).join('');
 
       renderItemDropdown();
@@ -433,13 +433,13 @@
         document.getElementById('customerName').value = veh.customer_name;
         document.getElementById('motorSelect').value = veh.motor_model_id;
         alertBox.className = 'status-alert found';
-        alertBox.textContent = `✓ Kendaraan terdaftar: ${veh.brand} ${veh.model_name} (a.n ${veh.customer_name})`;
+        alertBox.textContent = `✓ Registered vehicle: ${veh.brand} ${veh.model_name} (Owner: ${veh.customer_name})`;
         recalculatePricing();
         await loadPlateHistory(plate);
         await loadModelReference(veh.motor_model_id);
       } else {
         alertBox.className = 'status-alert new';
-        alertBox.textContent = `Kendaraan baru / belum ada di database. Silakan isi model & nama pelanggan.`;
+        alertBox.textContent = `New vehicle / not yet in database. Please enter model and customer name.`;
         document.getElementById('historyCard').style.display = 'none';
       }
     }
@@ -470,7 +470,7 @@
         action_type: actionType
       });
       recalculatePricing();
-      showToast("Item berhasil ditambahkan ke keranjang!");
+      showToast("Item added to order cart!");
     }
 
     async function loadModelReference(modelId) {
@@ -488,7 +488,7 @@
       }
 
       card.style.display = 'block';
-      title.textContent = `Referensi Model: ${data.motor_model.brand} ${data.motor_model.model_name}`;
+      title.textContent = `Model Reference: ${data.motor_model.brand} ${data.motor_model.model_name}`;
 
       // 1. Render History tab
       if (data.historical_items && data.historical_items.length > 0) {
@@ -496,11 +496,11 @@
           <table style="margin-top:0;">
             <thead>
               <tr>
-                <th>Item / Layanan</th>
-                <th>Pernah Dipakai</th>
-                <th>Terakhir Digunakan</th>
-                <th>Tarif Terakhir</th>
-                <th style="text-align:right;">Aksi</th>
+                <th>Item / Service</th>
+                <th>Times Used</th>
+                <th>Last Service Date</th>
+                <th>Last Rate</th>
+                <th style="text-align:right;">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -508,20 +508,20 @@
                 const isPart = it.item_type === 'part';
                 const typeBadge = isPart 
                   ? `<span class="badge badge-primary">Part</span>` 
-                  : `<span class="badge badge-service">Jasa</span>`;
+                  : `<span class="badge badge-service">Service</span>`;
                 const dateStr = it.last_used_at ? it.last_used_at.substring(0, 10) : '-';
-                const feeText = it.latest_install_fee > 0 ? ` (Ongkos: ${formatRupiah(it.latest_install_fee)})` : '';
+                const feeText = it.latest_install_fee > 0 ? ` (Labor: ${formatRupiah(it.latest_install_fee)})` : '';
                 return `
                   <tr>
                     <td>
                       <div style="font-weight:600;">${escapeHtml(it.item_name)}</div>
                       <div style="font-size:0.75rem; color:var(--text-muted);">${typeBadge} ${it.part_code ? escapeHtml(it.part_code) : ''}</div>
                     </td>
-                    <td><span style="font-weight:700; color:var(--accent);">${it.usage_count}x</span> transaksi</td>
+                    <td><span style="font-weight:700; color:var(--accent);">${it.usage_count}x</span> orders</td>
                     <td style="font-size:0.8rem; color:var(--text-muted);">${dateStr}</td>
                     <td>${formatRupiah(it.latest_price)}${feeText}</td>
                     <td style="text-align:right;">
-                      <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="quickAddFromReference('${it.item_type}', ${it.item_id}, 'installed')">+ Keranjang</button>
+                      <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="quickAddFromReference('${it.item_type}', ${it.item_id}, 'installed')">+ Cart</button>
                     </td>
                   </tr>
                 `;
@@ -530,7 +530,7 @@
           </table>
         `;
       } else {
-        histContent.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted); font-size:0.85rem;">Belum ada riwayat transaksi pengerjaan sebelumnya untuk model motor ini.</div>`;
+        histContent.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted); font-size:0.85rem;">No prior service history recorded for this motorcycle model.</div>`;
       }
 
       // 2. Render Estimates tab
@@ -539,16 +539,16 @@
           <table style="margin-top:0;">
             <thead>
               <tr>
-                <th>Suku Cadang</th>
-                <th>Bawa Pulang (Retail)</th>
-                <th>Ongkos Pasang Model Ini</th>
-                <th>Total Pasang</th>
-                <th style="text-align:right;">Aksi</th>
+                <th>Spare Part</th>
+                <th>Retail (Takeaway)</th>
+                <th>Labor (This Model)</th>
+                <th>Installed Total</th>
+                <th style="text-align:right;">Action</th>
               </tr>
             </thead>
             <tbody>
               ${data.catalog_estimates.parts.map(p => {
-                const feeBadge = p.is_custom_fee ? `<span class="badge badge-custom">Khusus</span> ` : '';
+                const feeBadge = p.is_custom_fee ? `<span class="badge badge-custom">Custom</span> ` : '';
                 return `
                   <tr>
                     <td>
@@ -559,7 +559,7 @@
                     <td>${feeBadge}${formatRupiah(p.applicable_install_fee)}</td>
                     <td style="font-weight:700; color:var(--accent);">${formatRupiah(p.installed_estimate)}</td>
                     <td style="text-align:right;">
-                      <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="quickAddFromReference('part', ${p.id}, 'installed')">+ Pasang</button>
+                      <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="quickAddFromReference('part', ${p.id}, 'installed')">+ Install</button>
                     </td>
                   </tr>
                 `;
@@ -584,15 +584,15 @@
       }
 
       card.style.display = 'block';
-      badge.textContent = `${data.work_orders.length} Servis`;
+      badge.textContent = `${data.work_orders.length} Visits`;
 
       list.innerHTML = data.work_orders.map(wo => {
         const dateStr = wo.created_at ? wo.created_at.replace('T', ' ').substring(0, 16) : '-';
         const itemsHtml = wo.items.map(it => {
           const typeBadge = it.item_type === 'part' 
             ? `<span class="badge badge-primary" style="font-size:0.65rem;">Part</span>` 
-            : `<span class="badge badge-service" style="font-size:0.65rem;">Jasa</span>`;
-          const actLabel = it.action_type === 'takeaway' ? ' (Bawa Pulang)' : ' (Pasang)';
+            : `<span class="badge badge-service" style="font-size:0.65rem;">Service</span>`;
+          const actLabel = it.action_type === 'takeaway' ? ' (Takeaway)' : ' (Installed)';
           return `
             <div style="font-size: 0.8rem; margin-top: 4px; display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border); padding-bottom: 2px;">
               <div>${typeBadge} ${escapeHtml(it.item_name)}${actLabel}</div>
@@ -654,7 +654,7 @@
       if (cart.length === 0) {
         document.getElementById('cartTableBody').innerHTML = `
           <tr>
-            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Keranjang kosong. Pilih barang atau jasa untuk menghitung estimasi.</td>
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Cart is empty. Select catalog items to compute real-time estimates.</td>
           </tr>
         `;
         currentCartTotal = 0;
@@ -712,11 +712,11 @@
       });
 
       if (res.ok) {
-        showToast("Tarif berhasil diperbarui ke database master!");
+        showToast("Rate updated in master database successfully!");
         await loadMasterData();
         recalculatePricing();
       } else {
-        alert("Gagal update master!");
+        alert("Failed to update master data!");
       }
     }
 
@@ -728,16 +728,16 @@
         const isPart = item.item_type === 'part';
         const typeBadge = isPart 
           ? `<span class="badge badge-primary">Part</span>` 
-          : `<span class="badge badge-service">Jasa</span>`;
+          : `<span class="badge badge-service">Service</span>`;
         
         const toggleHtml = isPart ? `
           <div class="toggle-group">
-            <button class="toggle-btn ${item.action_type === 'takeaway' ? 'active' : ''}" onclick="toggleAction(${idx}, 'takeaway')">Bawa Pulang</button>
-            <button class="toggle-btn ${item.action_type === 'installed' ? 'active' : ''}" onclick="toggleAction(${idx}, 'installed')">Pasang</button>
+            <button class="toggle-btn ${item.action_type === 'takeaway' ? 'active' : ''}" onclick="toggleAction(${idx}, 'takeaway')">Takeaway</button>
+            <button class="toggle-btn ${item.action_type === 'installed' ? 'active' : ''}" onclick="toggleAction(${idx}, 'installed')">Install</button>
           </div>
-        ` : `<span style="font-size:0.8rem; color:var(--text-muted);">Pengerjaan</span>`;
+        ` : `<span style="font-size:0.8rem; color:var(--text-muted);">Labor</span>`;
 
-        const feeBadge = item.is_custom_fee ? `<span class="badge badge-custom" title="Tarif khusus model motor ini">Khusus</span> ` : '';
+        const feeBadge = item.is_custom_fee ? `<span class="badge badge-custom" title="Custom rate for this model">Custom</span> ` : '';
 
         const currentPrice = cart[idx].price !== undefined ? cart[idx].price : item.price;
         const currentFee = cart[idx].install_fee !== undefined ? cart[idx].install_fee : item.install_fee;
@@ -756,24 +756,24 @@
             <td>${toggleHtml}</td>
             <td>
               <input type="number" min="1" value="${currentQty}" style="width: 55px; padding: 4px 6px; font-size: 0.85rem;" 
-                onchange="updateItemQuantity(${idx}, this.value)" title="Jumlah kuantitas">
+                onchange="updateItemQuantity(${idx}, this.value)" title="Quantity">
             </td>
             <td>
               <input type="number" value="${currentPrice}" style="width: 100px; padding: 4px 8px; font-size: 0.85rem;" 
-                onchange="updateItemManualPrice(${idx}, 'price', this.value)" title="Ubah harga satuan">
+                onchange="updateItemManualPrice(${idx}, 'price', this.value)" title="Unit retail price">
             </td>
             <td>
               ${item.action_type === 'installed' ? `
                 <div style="display:flex; align-items:center; gap:4px;">
                   ${feeBadge}
                   <input type="number" value="${currentFee}" style="width: 85px; padding: 4px 8px; font-size: 0.85rem;" 
-                    onchange="updateItemManualPrice(${idx}, 'install_fee', this.value)" title="Ubah ongkos pasang">
+                    onchange="updateItemManualPrice(${idx}, 'install_fee', this.value)" title="Labor fee">
                 </div>
               ` : `<span style="color:var(--text-muted);">-</span>`}
             </td>
             <td style="font-weight:700; color:var(--accent); font-size: 1rem;">${formatRupiah(item.subtotal)}</td>
             <td style="text-align: right;">
-              <button class="btn btn-danger" onclick="removeItem(${idx})">Hapus</button>
+              <button class="btn btn-danger" onclick="removeItem(${idx})">Remove</button>
             </td>
           </tr>
           <tr style="background: rgba(15, 23, 42, 0.4);">
@@ -782,16 +782,16 @@
                 <div style="display: flex; gap: 16px; align-items: center;">
                   <label style="display: flex; align-items: center; gap: 6px; margin: 0; cursor: pointer; color: #cbd5e1;">
                     <input type="checkbox" style="width:auto;" ${saveStdChecked} onchange="toggleSaveAsStandard(${idx}, this.checked)">
-                    Simpan harga ini ke master data
+                    Save this price to catalog master
                   </label>
                   ${isPart && motorModelId ? `
                     <label style="display: flex; align-items: center; gap: 6px; margin: 0; cursor: pointer; color: #fde68a;">
                       <input type="checkbox" style="width:auto;" ${saveCustomChecked} onchange="toggleSaveAsModelCustom(${idx}, this.checked)">
-                      Sebagai tarif khusus model motor ini
+                      As custom rate for this model
                     </label>
                   ` : ''}
                 </div>
-                <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem;" onclick="quickSaveMasterDirect(${idx})">Simpan ke Master Sekarang</button>
+                <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem;" onclick="quickSaveMasterDirect(${idx})">Save to Master Now</button>
               </div>
             </td>
           </tr>
@@ -834,10 +834,10 @@
       const method = document.getElementById('paymentMethodSelect').value;
       const cashVal = parseFloat(document.getElementById('cashReceivedInput').value);
 
-      if (!plate) { alert("Harap isi Plat Nomor Kendaraan!"); return; }
-      if (!motorModelId) { alert("Harap pilih Model Motor!"); return; }
-      if (!customerName) { alert("Harap isi Nama Pelanggan!"); return; }
-      if (cart.length === 0) { alert("Keranjang belanja masih kosong!"); return; }
+      if (!plate) { alert("Please enter the vehicle license plate number!"); return; }
+      if (!motorModelId) { alert("Please select a motorcycle model!"); return; }
+      if (!customerName) { alert("Please enter the customer name!"); return; }
+      if (cart.length === 0) { alert("Order cart is currently empty!"); return; }
 
       const btn = document.getElementById('btnCheckout');
       const idemKey = 'tx_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
@@ -845,7 +845,7 @@
       if (btn) {
         btn.disabled = true;
         btn.style.opacity = '0.6';
-        btn.textContent = 'Menyimpan Transaksi...';
+        btn.textContent = 'Processing Order...';
       }
 
       try {
@@ -866,21 +866,21 @@
 
         if (res.ok) {
           const order = await res.json();
-          showToast(`Transaksi WO #${order.id} Senilai ${formatRupiah(order.total_amount)} Berhasil Disimpan!`);
+          showToast(`Work Order #${order.id} for ${formatRupiah(order.total_amount)} completed successfully!`);
           resetCart();
           await loadPlateHistory(plate);
           openReceiptModal(order.id);
         } else {
           const err = await res.json();
-          alert("Gagal menyimpan transaksi: " + (err.error || "Unknown error"));
+          alert("Failed to save work order: " + (err.error || "Unknown error"));
         }
       } catch (err) {
-        alert("Koneksi gagal: " + err.message);
+        alert("Connection failed: " + err.message);
       } finally {
         if (btn) {
           btn.disabled = false;
           btn.style.opacity = '1';
-          btn.textContent = 'Simpan Transaksi Kasir';
+          btn.textContent = 'Checkout Work Order';
         }
       }
     }
@@ -898,7 +898,7 @@
       const modal = document.getElementById('receiptModal');
       const box = document.getElementById('receiptContent');
       modal.style.display = 'flex';
-      box.textContent = "Memuat data struk...";
+      box.textContent = "Loading thermal receipt data...";
       try {
         const res = await fetch(`/api/work-orders/${woId}/receipt`);
         if (res.ok) {
@@ -906,7 +906,7 @@
           currentReceiptText = data.receipt_text;
           box.textContent = currentReceiptText;
         } else {
-          box.textContent = "Gagal memuat struk kasir.";
+          box.textContent = "Failed to load thermal receipt.";
         }
       } catch (e) {
         box.textContent = "Error: " + e.message;
@@ -920,7 +920,7 @@
     function copyReceiptText() {
       if (currentReceiptText) {
         navigator.clipboard.writeText(currentReceiptText).then(() => {
-          showToast("Teks struk berhasil disalin ke clipboard!");
+          showToast("Receipt text copied to clipboard!");
         });
       }
     }
@@ -948,12 +948,12 @@
     async function submitInvoiceScan() {
       const text = document.getElementById('rawInvoiceInput').value.trim();
       const autoUpdate = document.getElementById('autoUpdateCatalogCheck').checked;
-      if (!text) { alert("Harap masukkan teks faktur supplier!"); return; }
+      if (!text) { alert("Please enter supplier invoice text!"); return; }
 
       const resBox = document.getElementById('scanResultBox');
       resBox.style.display = 'block';
-      document.getElementById('scanVendorTitle').textContent = "Mengekstrak faktur...";
-      document.getElementById('scanItemsBody').innerHTML = "<tr><td colspan='4'>Memproses OCR &amp; Rekonsiliasi...</td></tr>";
+      document.getElementById('scanVendorTitle').textContent = "Extracting invoice...";
+      document.getElementById('scanItemsBody').innerHTML = "<tr><td colspan='4'>Processing OCR &amp; Financial Reconciliation...</td></tr>";
 
       try {
         const res = await fetch('/api/invoices/scan', {
@@ -965,23 +965,23 @@
           const data = await res.json();
           const inv = data.invoice;
           const audit = data.financial_audit;
-          document.getElementById('scanVendorTitle').textContent = `${inv.vendor} (Faktur: ${inv.invoice_number})`;
+          document.getElementById('scanVendorTitle').textContent = `${inv.vendor} (Invoice: ${inv.invoice_number})`;
           const badge = document.getElementById('scanAuditBadge');
           if (audit.is_financially_reconciled) {
             badge.className = "badge badge-primary";
-            badge.textContent = "Audit Finansial Seimbang";
+            badge.textContent = "Financial Audit Balanced";
           } else {
             badge.className = "badge badge-custom";
-            badge.textContent = `Discrepansi ${formatRupiah(audit.reconciliation_delta)}`;
+            badge.textContent = `Discrepancy ${formatRupiah(audit.reconciliation_delta)}`;
           }
           document.getElementById('scanAuditStats').textContent = 
-            `Total: ${formatRupiah(inv.grand_total)} | Cocok: ${audit.matched_count}/${audit.items_count} item | Margin Violations: ${audit.margin_violations_count}`;
+            `Total: ${formatRupiah(inv.grand_total)} | Matched: ${audit.matched_count}/${audit.items_count} items | Margin Violations: ${audit.margin_violations_count}`;
 
           const tbody = document.getElementById('scanItemsBody');
           tbody.innerHTML = data.reconciliation.map(m => `
             <tr>
               <td>${escapeHtml(m.invoice_sku)}</td>
-              <td>${m.db_name ? escapeHtml(m.db_name) : '<span style="color:#ef4444;">Belum ada di katalog</span>'}</td>
+              <td>${m.db_name ? escapeHtml(m.db_name) : '<span style="color:#ef4444;">Not in catalog</span>'}</td>
               <td>${formatRupiah(m.invoice_unit_cost)}</td>
               <td>${m.match_type} ${m.auto_updated ? '<span style="color:#10b981;">✓ Updated</span>' : ''}</td>
             </tr>
@@ -992,7 +992,7 @@
           }
         } else {
           const err = await res.json();
-          alert("Gagal scan faktur: " + (err.error || "Unknown error"));
+          alert("Invoice scan failed: " + (err.error || "Unknown error"));
         }
       } catch (e) {
         alert("Error: " + e.message);
@@ -1002,8 +1002,8 @@
     // SETTINGS MODAL
     function openSettingsModal() {
       document.getElementById('settingWsName').value = currentSettings.workshop_name || "";
-      document.getElementById('settingCurrSymbol').value = currentSettings.currency_symbol || "Rp";
-      document.getElementById('settingCurrCode').value = currentSettings.currency_code || "IDR";
+      document.getElementById('settingCurrSymbol').value = currentSettings.currency_symbol || "$";
+      document.getElementById('settingCurrCode').value = currentSettings.currency_code || "USD";
       document.getElementById('settingReceiptHeader').value = currentSettings.receipt_header || "";
       document.getElementById('settingReceiptFooter').value = currentSettings.receipt_footer || "";
       document.getElementById('settingMinMargin').value = currentSettings.min_margin_pct || 25;
@@ -1032,10 +1032,10 @@
         document.getElementById('headerTitle').textContent = currentSettings.workshop_name;
         document.getElementById('headerCurrencyBadge').textContent = `${currentSettings.currency_code} (${currentSettings.currency_symbol})`;
         closeSettingsModal();
-        showToast("Pengaturan toko berhasil disimpan!");
+        showToast("Workshop settings saved successfully!");
         recalculatePricing();
       } else {
-        alert("Gagal menyimpan pengaturan!");
+        alert("Failed to save workshop settings!");
       }
     }
 

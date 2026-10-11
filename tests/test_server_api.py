@@ -140,7 +140,7 @@ class TestServerApi(unittest.TestCase):
         self.assertIn("BENGKELSTACK WORKSHOP OS", receipt_data["receipt_text"])
         self.assertIn("B 9999 XYZ", receipt_data["receipt_text"])
         self.assertIn("Dimas Budi", receipt_data["receipt_text"])
-        self.assertIn("TOTAL BAYAR:", receipt_data["receipt_text"])
+        self.assertIn("TOTAL AMOUNT:", receipt_data["receipt_text"])
 
     def test_invoice_scan_api_endpoint(self):
         # Scan raw invoice text via POST /api/invoices/scan

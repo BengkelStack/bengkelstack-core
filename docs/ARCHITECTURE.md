@@ -1,4 +1,5 @@
 # ARCHITECTURE: BengkelStack Workshop Operating System
+
 **Document Version:** 1.0.0  
 **Status:** APPROVED (Gate 3 Passed)  
 **System Topology:** Edge-First Hybrid POS with Cloud Staging  
@@ -7,11 +8,11 @@
 
 ## 1. Architectural Philosophy & Layered Topology
 
-BengkelStack dirancang dengan pendekatan **Edge-First / Local-First Resilience**: bengkel harus tetap dapat beroperasi 100% melayani kasir dan mencetak nota meskipun koneksi internet provider mati total. Data lokal disinkronkan secara asinkron ke cluster cloud `bengkelstack.com`.
+BengkelStack is engineered around an **Edge-First / Local-First Resilience** paradigm: physical workshops must remain 100% operational for counter checkout and thermal printing even during total ISP internet outages. Local records synchronize asynchronously with the `bengkelstack.com` cloud gateway.
 
-### Diagram Layer Arsitektur:
+### Architectural Layer Topology:
 
-```
+```text
 +-----------------------------------------------------------------------+
 |                    PRESENTATION / CLIENT LAYER                        |
 |  - BengkelStack POS Web UI (Vanilla JS, Touch-Optimized, Thermal Print)|
@@ -20,17 +21,17 @@ BengkelStack dirancang dengan pendekatan **Edge-First / Local-First Resilience**
                                     | HTTP / REST (JSON)
 +-----------------------------------v-----------------------------------+
 |                     APPLICATION & ROUTING LAYER                       |
-|  - app/server.py (Python stdlib http.server + urllib router)           |
+|  - app/server.py (Python stdlib ThreadingHTTPServer + urllib router)  |
 |  - Request Validation & Response Serialization                        |
 +-----------------------------------^-----------------------------------+
                                     | Direct In-Memory Call
 +-----------------------------------v-----------------------------------+
 |                     CORE DOMAIN & RULE ENGINE                         |
-|  - app/pricing_engine.py (Dual-Tier Pricing: Retail vs Install)       |
+|  - app/pricing_engine.py (Dual-Tier Pricing: Retail vs Installed)     |
 |  - app/work_order_service.py (Work Order State Machine & Lifecycle)   |
 |  - app/custom_fee_repository.py (Model-Specific Custom Install Logic) |
 +-----------------------------------^-----------------------------------+
-                                    | Parametric SQL Query
+                                    | Parametric SQL Query (?)
 +-----------------------------------v-----------------------------------+
 |                    DATA ACCESS & REPOSITORIES                         |
 |  - app/repositories.py (Motor Models, Parts Catalog, Services)        |
@@ -50,38 +51,38 @@ BengkelStack dirancang dengan pendekatan **Edge-First / Local-First Resilience**
 
 ### Relational Schema Definitions:
 
-1. **`motor_models` (Model Kendaraan):**
+1. **`motor_models` (Vehicle Models):**
    - `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
-   - `name` (TEXT NOT NULL UNIQUE) — contoh: "Honda Vario 125/150", "Yamaha NMAX 155", "Honda Beat ESP"
-   - `brand` (TEXT NOT NULL) — contoh: "Honda", "Yamaha", "Suzuki", "Kawasaki"
-   - `engine_category` (TEXT NOT NULL) — "MATIC", "BEBEK", "SPORT", "BIGBIKE"
+   - `name` (TEXT NOT NULL UNIQUE) — e.g. "Honda Vario 125/150", "Yamaha NMAX 155", "Honda Beat ESP"
+   - `brand` (TEXT NOT NULL) — e.g. "Honda", "Yamaha", "Suzuki", "Kawasaki"
+   - `engine_category` (TEXT NOT NULL) — "MATIC", "MOPED", "SPORT", "BIGBIKE"
 
-2. **`parts` (Katalog Suku Cadang):**
+2. **`parts` (Parts Catalog):**
    - `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
    - `sku` (TEXT UNIQUE)
    - `name` (TEXT NOT NULL)
    - `category` (TEXT NOT NULL) — "OIL", "TIRE", "BRAKE", "DRIVE", "ELECTRICAL"
-   - `purchase_cost` (REAL DEFAULT 0) — Harga Pokok Penjualan (HPP)
-   - `retail_price` (REAL NOT NULL) — Harga Bawa Pulang (Retail)
-   - `default_install_fee` (REAL NOT NULL DEFAULT 0) — Default ongkos pasang
+   - `purchase_cost` (REAL DEFAULT 0) — Cost of Goods Sold (COGS)
+   - `retail_price` (REAL NOT NULL) — Takeaway retail price
+   - `default_install_fee` (REAL NOT NULL DEFAULT 0) — Default installation labor fee
    - `stock_qty` (INTEGER NOT NULL DEFAULT 0)
    - `created_at` (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
 
-3. **`services` (Katalog Jasa Murni):**
+3. **`services` (Labor Services Catalog):**
    - `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
    - `code` (TEXT UNIQUE)
-   - `name` (TEXT NOT NULL) — contoh: "Servis Ringan / Tune Up", "Ganti Ban Luar", "Bongkar CVT"
+   - `name` (TEXT NOT NULL) — e.g. "Routine Tune-Up", "Tire Replacement", "CVT Overhaul"
    - `fee` (REAL NOT NULL)
    - `estimated_minutes` (INTEGER DEFAULT 30)
 
-4. **`model_custom_fees` (Tabel Override Ongkos Model):**
+4. **`model_custom_fees` (Model-Specific Custom Labor Overrides):**
    - `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
    - `motor_model_id` (INTEGER NOT NULL, FK -> `motor_models.id`)
    - `part_id` (INTEGER NOT NULL, FK -> `parts.id`)
    - `custom_install_fee` (REAL NOT NULL)
    - *Constraint:* `UNIQUE(motor_model_id, part_id)`
 
-5. **`vehicles` (Data Kendaraan Pelanggan):**
+5. **`vehicles` (Customer Vehicle Fleet):**
    - `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
    - `plate_number` (TEXT NOT NULL UNIQUE) — index `idx_plate`
    - `motor_model_id` (INTEGER NOT NULL, FK -> `motor_models.id`)
@@ -89,7 +90,7 @@ BengkelStack dirancang dengan pendekatan **Edge-First / Local-First Resilience**
    - `phone_number` (TEXT)
    - `last_visit_at` (TIMESTAMP)
 
-6. **`work_orders` (Transaksi / Surat Perintah Kerja):**
+6. **`work_orders` (Work Orders & Billing):**
    - `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
    - `order_number` (TEXT NOT NULL UNIQUE) — format: `WO-YYYYMMDD-XXXX`
    - `vehicle_id` (INTEGER NOT NULL, FK -> `vehicles.id`)
@@ -97,6 +98,10 @@ BengkelStack dirancang dengan pendekatan **Edge-First / Local-First Resilience**
    - `plate_number` (TEXT NOT NULL)
    - `motor_model_id` (INTEGER NOT NULL)
    - `status` (TEXT NOT NULL DEFAULT 'DRAFT') — `DRAFT`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`
+   - `payment_method` (TEXT NOT NULL DEFAULT 'CASH')
+   - `cash_received` (REAL NOT NULL DEFAULT 0)
+   - `change_amount` (REAL NOT NULL DEFAULT 0)
+   - `idempotency_key` (TEXT UNIQUE)
    - `total_parts` (REAL NOT NULL DEFAULT 0)
    - `total_labor` (REAL NOT NULL DEFAULT 0)
    - `grand_total` (REAL NOT NULL DEFAULT 0)
@@ -104,14 +109,14 @@ BengkelStack dirancang dengan pendekatan **Edge-First / Local-First Resilience**
    - `created_at` (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
    - `completed_at` (TIMESTAMP)
 
-7. **`work_order_items` (Rincian Item Nota Servis):**
+7. **`work_order_items` (Work Order Line Items):**
    - `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
    - `work_order_id` (INTEGER NOT NULL, FK -> `work_orders.id` ON DELETE CASCADE)
-   - `item_type` (TEXT NOT NULL) — `PART` atau `SERVICE`
+   - `item_type` (TEXT NOT NULL) — `PART` or `SERVICE`
    - `item_id` (INTEGER NOT NULL)
    - `item_name` (TEXT NOT NULL)
    - `quantity` (INTEGER NOT NULL DEFAULT 1)
-   - `action_type` (TEXT NOT NULL) — `TAKE_AWAY` atau `INSTALL`
+   - `action_type` (TEXT NOT NULL) — `TAKE_AWAY` or `INSTALL`
    - `unit_price` (REAL NOT NULL)
    - `unit_install_fee` (REAL NOT NULL DEFAULT 0)
    - `subtotal` (REAL NOT NULL)
@@ -120,15 +125,15 @@ BengkelStack dirancang dengan pendekatan **Edge-First / Local-First Resilience**
 
 ## 3. Work Order State Machine
 
-```
+```text
       +---------------+
-      |   (Baru)      |
+      |    (New)      |
       +-------+-------+
               |
               v
        [    DRAFT     ]  <---+
               |              |
-              | Estimasi OK  | Tambah item/revisi
+              | Estimate OK  | Item updates/revisions
               v              |
        [ IN_PROGRESS  ]  ----+
               |
@@ -136,18 +141,18 @@ BengkelStack dirancang dengan pendekatan **Edge-First / Local-First Resilience**
       |               |
       v               v
  [ COMPLETED ]  [ CANCELLED ]
- (Final & Kunci) (Dibatalkan)
+(Locked & Paid)   (Voided)
 ```
 
-- **DRAFT:** Item dapat ditambah/dihapus secara dinamis. Total dikalkulasi oleh pricing engine.
-- **IN_PROGRESS:** Mekanik mengambil part dari gudang; stok direservasi.
-- **COMPLETED:** Kasir menerima pembayaran (Tunai/Transfer/QRIS); nota dicetak; stok terpotong permanen; entri menjadi immutable.
-- **CANCELLED:** Transaksi dibatalkan sebelum kasir; part dikembalikan ke rak.
+- **DRAFT:** Line items can be dynamically added or modified. Totals calculated in real-time by pricing engine.
+- **IN_PROGRESS:** Mechanic retrieves parts from store; inventory reserved.
+- **COMPLETED:** Cashier receives payment (Cash, Card, QR); thermal receipt formatted; inventory deducted; record locked immutable.
+- **CANCELLED:** Transaction voided before checkout; reserved inventory released back to shelves.
 
 ---
 
 ## 4. Staged Cloud Deployment Strategy
 
-1. **Tahap 1 (Lokal Mandiri - Selesai):** Engine berjalan di localhost (port 8089) pada laptop kasir dengan database SQLite WAL.
-2. **Tahap 2 (Edge Cloud Hybrid - Staging):** Deploy Landing Page statis ke Cloudflare Pages (`bengkelstack.com`), arahkan DNS dan email (`founder@bengkelstack.com`).
-3. **Tahap 3 (Multi-Tenant Cloud Sync - Produksi):** Sync agent asinkron mengirimkan snapshot transaksi harian terenkripsi ke database pusat untuk reporting pemilik bengkel via mobile.
+1. **Stage 1 (Autonomous Edge - Implemented):** Core engine runs on localhost (port 8089) on the workshop cashier computer with local SQLite WAL database.
+2. **Stage 2 (Edge Cloud Hybrid - Staging):** Deploy static landing page to Cloudflare Pages (`bengkelstack.com`), configure DNS and founder communications (`founder@bengkelstack.com`).
+3. **Stage 3 (Multi-Tenant Cloud Sync - Production):** Lightweight sync agent asynchronously streams encrypted daily transaction snapshots to the central database for mobile owner dashboards.

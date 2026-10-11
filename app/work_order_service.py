@@ -451,8 +451,8 @@ def get_model_pricing_reference(conn: sqlite3.Connection, motor_model_id: int) -
 def format_thermal_receipt(wo: Dict[str, Any], width: int = 40, conn: Optional[sqlite3.Connection] = None) -> str:
     # ponytail: stdlib clean mono-spaced formatting for 58mm/80mm thermal ESC/POS
     ws_name = "BENGKELSTACK WORKSHOP"
-    ws_header = "LAYANAN SERVIS & SUKU CADANG"
-    ws_footer = "Garansi Servis 7 Hari / 500 KM"
+    ws_header = "SERVICE & REPAIR CENTER"
+    ws_footer = "Service Warranty 7 Days / 500 KM"
     curr_sym = "Rp"
 
     if conn is not None:
@@ -477,38 +477,38 @@ def format_thermal_receipt(wo: Dict[str, Any], width: int = 40, conn: Optional[s
     lines.append("=" * width)
 
     v = wo.get("vehicle", {})
-    lines.append(f"No. Nota : WO-{wo.get('id', 0):05d}")
-    lines.append(f"Waktu    : {wo.get('created_at', '-')}")
-    lines.append(f"Plat     : {v.get('plate_number', '-')} ({v.get('brand', '')} {v.get('model_name', '')})")
-    lines.append(f"Pelanggan: {v.get('customer_name', '-')}")
-    lines.append(f"Status   : {wo.get('status', 'COMPLETED')}")
-    lines.append(f"METODE   : {wo.get('payment_method', 'CASH')}")
+    lines.append(f"Receipt No : WO-{wo.get('id', 0):05d}")
+    lines.append(f"Date/Time  : {wo.get('created_at', '-')}")
+    lines.append(f"Plate No   : {v.get('plate_number', '-')} ({v.get('brand', '')} {v.get('model_name', '')})")
+    lines.append(f"Customer   : {v.get('customer_name', '-')}")
+    lines.append(f"Status     : {wo.get('status', 'COMPLETED')}")
+    lines.append(f"METHOD     : {wo.get('payment_method', 'CASH')}")
     lines.append("-" * width)
-    lines.append(f"{'ITEM':<20} {'AKSI':<8} {'SUBTOTAL':>10}")
+    lines.append(f"{'ITEM':<20} {'ACTION':<8} {'SUBTOTAL':>10}")
     lines.append("-" * width)
 
     for it in wo.get("items", []):
         name = (it.get("item_name") or "Item")[:19]
-        action = "PASANG" if it.get("action_type") == "installed" else "BELI"
+        action = "INSTALL" if it.get("action_type") == "installed" else "RETAIL"
         subtotal = fmt_val(it.get("subtotal", 0))
-        lines.append(f"{name:<20} {action:<8} {subtotal:>10}")
+        lines.append(f"{name:<20} action:<8 {subtotal:>10}".replace("action:<8", f"{action:<8}"))
         if it.get("action_type") == "installed" and it.get("install_fee", 0) > 0 and it.get("item_type") == "part":
             part_p = fmt_val(it.get("price", 0))
             fee_p = fmt_val(it.get("install_fee", 0))
-            lines.append(f"  Part: {part_p} | Ongkos: {fee_p}")
+            lines.append(f"  Part: {part_p} | Labor: {fee_p}")
 
     lines.append("-" * width)
     total_str = fmt_val(wo.get("total_amount", 0))
-    lines.append(f"{'TOTAL BAYAR:':<22} {total_str:>17}")
+    lines.append(f"{'TOTAL AMOUNT:':<22} {total_str:>17}")
 
     if wo.get("payment_method") == "CASH" and wo.get("cash_received", 0) > 0:
         cash_str = fmt_val(wo.get("cash_received", 0))
         chg_str = fmt_val(wo.get("change_amount", 0))
-        lines.append(f"{'TUNAI DITERIMA:':<22} {cash_str:>17}")
-        lines.append(f"{'UANG KEMBALIAN:':<22} {chg_str:>17}")
+        lines.append(f"{'CASH TENDERED:':<22} {cash_str:>17}")
+        lines.append(f"{'CHANGE DUE:':<22} {chg_str:>17}")
 
     lines.append("=" * width)
-    lines.append("Terima kasih atas kunjungan Anda!".center(width))
+    lines.append("Thank you for your visit!".center(width))
     lines.append(ws_footer.center(width))
     lines.append("=" * width)
     return "\n".join(lines)

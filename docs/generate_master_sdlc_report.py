@@ -115,7 +115,7 @@ def build_pdf(filename="BengkelStack_Comprehensive_SDLC_Audit_Report.pdf"):
 
     meta_data = [
         [
-            Paragraph("<b>Target Sistem:</b> BengkelStack Core & Cloud Gateway", body_style),
+            Paragraph("<b>Target System:</b> BengkelStack Core & Cloud Gateway", body_style),
             Paragraph("<b>Model Distribusi:</b> Open-Core MIT (Komersial Cloud)", body_style)
         ],
         [

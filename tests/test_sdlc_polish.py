@@ -102,7 +102,7 @@ class TestSdlcPolish(unittest.TestCase):
         receipt = format_thermal_receipt(order, conn=self.conn)
         self.assertIn("Austin Moto Garage", receipt)
         self.assertIn("PREMIUM MOTORCYCLE SERVICE", receipt)
-        self.assertIn("METODE   : CARD", receipt)
+        self.assertIn("METHOD     : CARD", receipt)
         self.assertIn("$", receipt)
         self.assertNotIn("Rp", receipt)
 
