@@ -78,6 +78,34 @@ paths:
                 items:
                   $ref: '#/components/schemas/Service'
 
+  /api/settings:
+    get:
+      summary: Retrieve current workshop settings and currency format
+      operationId: getWorkshopSettings
+      responses:
+        '200':
+          description: Workshop settings object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkshopSettings'
+    post:
+      summary: Update workshop settings, currency symbol, and minimum margin
+      operationId: updateWorkshopSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWorkshopSettingsRequest'
+      responses:
+        '200':
+          description: Updated workshop settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkshopSettings'
+
   /api/vehicle-lookup:
     get:
       summary: Lookup vehicle profile and owner by plate number
@@ -488,6 +516,12 @@ components:
           type: string
           enum: [DRAFT, IN_PROGRESS, COMPLETED, CANCELLED]
           default: COMPLETED
+        payment_method:
+          type: string
+          enum: [CASH, QRIS, TRANSFER, CARD]
+          default: CASH
+        cash_received:
+          type: number
         notes:
           type: string
         items:
@@ -511,6 +545,12 @@ components:
           type: string
         status:
           type: string
+        payment_method:
+          type: string
+        cash_received:
+          type: number
+        change_amount:
+          type: number
         total_parts:
           type: number
         total_labor:
@@ -523,6 +563,40 @@ components:
           type: array
           items:
             type: object
+
+    WorkshopSettings:
+      type: object
+      properties:
+        id:
+          type: integer
+        workshop_name:
+          type: string
+        currency_symbol:
+          type: string
+        currency_code:
+          type: string
+        receipt_header:
+          type: string
+        receipt_footer:
+          type: string
+        min_margin_pct:
+          type: number
+
+    UpdateWorkshopSettingsRequest:
+      type: object
+      properties:
+        workshop_name:
+          type: string
+        currency_symbol:
+          type: string
+        currency_code:
+          type: string
+        receipt_header:
+          type: string
+        receipt_footer:
+          type: string
+        min_margin_pct:
+          type: number
 
     WorkOrderSummary:
       type: object

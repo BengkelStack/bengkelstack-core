@@ -6,7 +6,13 @@ import os
 from typing import Tuple, Any, Optional
 
 from database.db import get_connection, run_migrations
-from app.repositories import list_motor_models, list_parts, list_services
+from app.repositories import (
+    list_motor_models,
+    list_parts,
+    list_services,
+    get_workshop_settings,
+    update_workshop_settings,
+)
 from app.pricing_engine import calculate_cart_pricing
 from app.work_order_service import (
     find_vehicle_by_plate,
@@ -56,6 +62,9 @@ def handle_api_request(
             search = query_params.get("search", [None])[0]
             return 200, list_services(conn, search)
 
+        elif endpoint == "/api/settings":
+            return 200, get_workshop_settings(conn)
+
         elif endpoint == "/api/vehicle-lookup":
             plate = query_params.get("plate", [None])[0]
             if not plate:
@@ -91,7 +100,7 @@ def handle_api_request(
                     if len(parts) == 4 and parts[3] == "receipt":
                         return 200, {
                             "work_order_id": wo_id,
-                            "receipt_text": format_thermal_receipt(wo)
+                            "receipt_text": format_thermal_receipt(wo, conn=conn)
                         }
                     elif len(parts) == 3:
                         return 200, wo
@@ -119,9 +128,28 @@ def handle_api_request(
                     motor_model_id=int(body["motor_model_id"]),
                     customer_name=body["customer_name"],
                     items=body["items"],
-                    status=body.get("status", "COMPLETED")
+                    status=body.get("status", "COMPLETED"),
+                    payment_method=body.get("payment_method", "CASH"),
+                    cash_received=float(body["cash_received"]) if body.get("cash_received") is not None else None
                 )
                 return 201, order
+            except (KeyError, ValueError) as e:
+                return 400, {"error": str(e)}
+
+        elif endpoint == "/api/settings":
+            if not body:
+                return 400, {"error": "Missing payload"}
+            try:
+                res = update_workshop_settings(
+                    conn,
+                    workshop_name=body.get("workshop_name"),
+                    currency_symbol=body.get("currency_symbol"),
+                    currency_code=body.get("currency_code"),
+                    receipt_header=body.get("receipt_header"),
+                    receipt_footer=body.get("receipt_footer"),
+                    min_margin_pct=float(body["min_margin_pct"]) if body.get("min_margin_pct") is not None else None
+                )
+                return 200, res
             except (KeyError, ValueError) as e:
                 return 400, {"error": str(e)}
 

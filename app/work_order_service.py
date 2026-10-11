@@ -134,7 +134,9 @@ def create_work_order(
     motor_model_id: int,
     customer_name: str,
     items: List[Dict[str, Any]],
-    status: str = "COMPLETED"
+    status: str = "COMPLETED",
+    payment_method: str = "CASH",
+    cash_received: Optional[float] = None
 ) -> Dict[str, Any]:
     if not items:
         raise ValueError("Cart items cannot be empty")
@@ -192,11 +194,24 @@ def create_work_order(
 
     total_amount = round(total_amount, 2)
 
+    # Calculate cash and change
+    pay_method = payment_method.strip().upper() if payment_method else "CASH"
+    if pay_method == "CASH":
+        cash = float(cash_received) if cash_received is not None else total_amount
+        change = round(max(0.0, cash - total_amount), 2)
+    else:
+        cash = total_amount
+        change = 0.0
+
     # 3. Insert work order
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO work_orders (vehicle_id, status, total_amount) VALUES (?, ?, ?);",
-        (vehicle_id, status, total_amount)
+        """
+        INSERT INTO work_orders
+            (vehicle_id, status, total_amount, payment_method, cash_received, change_amount)
+        VALUES (?, ?, ?, ?, ?, ?);
+        """,
+        (vehicle_id, status, total_amount, pay_method, cash, change)
     )
     order_id = cursor.lastrowid
 
@@ -227,7 +242,8 @@ def get_work_order(conn: sqlite3.Connection, work_order_id: int) -> Optional[Dic
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT wo.id, wo.vehicle_id, wo.status, wo.total_amount, wo.created_at,
+        SELECT wo.id, wo.vehicle_id, wo.status, wo.total_amount,
+               wo.payment_method, wo.cash_received, wo.change_amount, wo.created_at,
                v.plate_number, v.customer_name, v.motor_model_id,
                m.brand, m.model_name
         FROM work_orders wo
@@ -268,6 +284,9 @@ def get_work_order(conn: sqlite3.Connection, work_order_id: int) -> Optional[Dic
         "id": wo_row["id"],
         "status": wo_row["status"],
         "total_amount": wo_row["total_amount"],
+        "payment_method": wo_row["payment_method"] if "payment_method" in wo_row.keys() else "CASH",
+        "cash_received": wo_row["cash_received"] if "cash_received" in wo_row.keys() else wo_row["total_amount"],
+        "change_amount": wo_row["change_amount"] if "change_amount" in wo_row.keys() else 0.0,
         "created_at": wo_row["created_at"],
         "vehicle": {
             "id": wo_row["vehicle_id"],
@@ -419,12 +438,32 @@ def get_model_pricing_reference(conn: sqlite3.Connection, motor_model_id: int) -
     }
 
 
-def format_thermal_receipt(wo: Dict[str, Any], width: int = 40) -> str:
+def format_thermal_receipt(wo: Dict[str, Any], width: int = 40, conn: Optional[sqlite3.Connection] = None) -> str:
     # ponytail: stdlib clean mono-spaced formatting for 58mm/80mm thermal ESC/POS
+    ws_name = "BENGKELSTACK WORKSHOP"
+    ws_header = "LAYANAN SERVIS & SUKU CADANG"
+    ws_footer = "Garansi Servis 7 Hari / 500 KM"
+    curr_sym = "Rp"
+
+    if conn is not None:
+        try:
+            from app.repositories import get_workshop_settings
+            st = get_workshop_settings(conn)
+            ws_name = st.get("workshop_name", ws_name)
+            ws_header = st.get("receipt_header", ws_header)
+            ws_footer = st.get("receipt_footer", ws_footer)
+            curr_sym = st.get("currency_symbol", curr_sym)
+        except Exception:
+            pass
+
+    def fmt_val(val: float) -> str:
+        formatted = f"{val:,.0f}".replace(",", ".")
+        return f"{curr_sym} {formatted}"
+
     lines = []
     lines.append("=" * width)
-    lines.append("BENGKELSTACK WORKSHOP OS".center(width))
-    lines.append("LAYANAN SERVIS & SUKU CADANG".center(width))
+    lines.append(ws_name.center(width))
+    lines.append(ws_header.center(width))
     lines.append("=" * width)
 
     v = wo.get("vehicle", {})
@@ -433,6 +472,7 @@ def format_thermal_receipt(wo: Dict[str, Any], width: int = 40) -> str:
     lines.append(f"Plat     : {v.get('plate_number', '-')} ({v.get('brand', '')} {v.get('model_name', '')})")
     lines.append(f"Pelanggan: {v.get('customer_name', '-')}")
     lines.append(f"Status   : {wo.get('status', 'COMPLETED')}")
+    lines.append(f"METODE   : {wo.get('payment_method', 'CASH')}")
     lines.append("-" * width)
     lines.append(f"{'ITEM':<20} {'AKSI':<8} {'SUBTOTAL':>10}")
     lines.append("-" * width)
@@ -440,19 +480,26 @@ def format_thermal_receipt(wo: Dict[str, Any], width: int = 40) -> str:
     for it in wo.get("items", []):
         name = (it.get("item_name") or "Item")[:19]
         action = "PASANG" if it.get("action_type") == "installed" else "BELI"
-        subtotal = f"Rp {it.get('subtotal', 0):,.0f}".replace(",", ".")
+        subtotal = fmt_val(it.get("subtotal", 0))
         lines.append(f"{name:<20} {action:<8} {subtotal:>10}")
         if it.get("action_type") == "installed" and it.get("install_fee", 0) > 0 and it.get("item_type") == "part":
-            part_p = f"Rp {it.get('price', 0):,.0f}".replace(",", ".")
-            fee_p = f"Rp {it.get('install_fee', 0):,.0f}".replace(",", ".")
+            part_p = fmt_val(it.get("price", 0))
+            fee_p = fmt_val(it.get("install_fee", 0))
             lines.append(f"  Part: {part_p} | Ongkos: {fee_p}")
 
     lines.append("-" * width)
-    total_str = f"Rp {wo.get('total_amount', 0):,.0f}".replace(",", ".")
-    lines.append(f"{'TOTAL BAYAR:':<24} {total_str:>15}")
+    total_str = fmt_val(wo.get("total_amount", 0))
+    lines.append(f"{'TOTAL BAYAR:':<22} {total_str:>17}")
+
+    if wo.get("payment_method") == "CASH" and wo.get("cash_received", 0) > 0:
+        cash_str = fmt_val(wo.get("cash_received", 0))
+        chg_str = fmt_val(wo.get("change_amount", 0))
+        lines.append(f"{'TUNAI DITERIMA:':<22} {cash_str:>17}")
+        lines.append(f"{'UANG KEMBALIAN:':<22} {chg_str:>17}")
+
     lines.append("=" * width)
     lines.append("Terima kasih atas kunjungan Anda!".center(width))
-    lines.append("Garansi Servis 7 Hari / 500 KM".center(width))
+    lines.append(ws_footer.center(width))
     lines.append("=" * width)
     return "\n".join(lines)
 

@@ -51,6 +51,9 @@ CREATE TABLE IF NOT EXISTS work_orders (
     vehicle_id INTEGER NOT NULL,
     status TEXT NOT NULL DEFAULT 'OPEN',
     total_amount REAL NOT NULL DEFAULT 0,
+    payment_method TEXT NOT NULL DEFAULT 'CASH',
+    cash_received REAL NOT NULL DEFAULT 0,
+    change_amount REAL NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE RESTRICT
 );
@@ -74,3 +77,20 @@ CREATE INDEX IF NOT EXISTS idx_vehicles_model ON vehicles(motor_model_id);
 CREATE INDEX IF NOT EXISTS idx_pmi_lookup ON part_motor_installations(part_id, motor_model_id);
 CREATE INDEX IF NOT EXISTS idx_wo_vehicle ON work_orders(vehicle_id);
 CREATE INDEX IF NOT EXISTS idx_woi_order ON work_order_items(work_order_id);
+
+-- 8. Workshop Settings (Pengaturan Bengkel & Multi-Currency)
+CREATE TABLE IF NOT EXISTS workshop_settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    workshop_name TEXT NOT NULL DEFAULT 'BENGKELSTACK WORKSHOP OS',
+    currency_symbol TEXT NOT NULL DEFAULT 'Rp',
+    currency_code TEXT NOT NULL DEFAULT 'IDR',
+    receipt_header TEXT DEFAULT 'LAYANAN SERVIS & SUKU CADANG',
+    receipt_footer TEXT DEFAULT 'Garansi Servis 7 Hari / 500 KM',
+    min_margin_pct REAL NOT NULL DEFAULT 25.0
+);
+
+-- 9. Schema Migrations (Pelacak Versi Migrasi)
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version TEXT PRIMARY KEY,
+    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

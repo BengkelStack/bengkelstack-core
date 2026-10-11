@@ -62,16 +62,28 @@
     .status-alert { font-size: 0.8rem; padding: 8px 12px; border-radius: 6px; margin-top: 8px; display: none; }
     .status-alert.found { background: #064e3b; color: #a7f3d0; display: block; }
     .status-alert.new { background: #451a03; color: #fde68a; display: block; }
+
+    /* Modal Backdrop & Cards */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.75); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+    .modal-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    .modal-close { background: transparent; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; }
+    .modal-close:hover { color: #fff; }
+    .receipt-paper { background: #020617; color: #38bdf8; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.82rem; line-height: 1.4; padding: 18px; border-radius: 6px; border: 1px dashed var(--border); white-space: pre-wrap; overflow-x: auto; }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
       <div>
-        <h1>Kasir Bengkel & Pricing Engine</h1>
-        <p style="color: var(--text-muted); font-size: 0.85rem;">Perhitungan otomatis Bawa Pulang (Retail) vs Pasang di Tempat (Retail + Ongkos)</p>
+        <h1 id="headerTitle">Kasir Bengkel &amp; Pricing Engine</h1>
+        <p style="color: var(--text-muted); font-size: 0.85rem;" id="headerSubtitle">Perhitungan otomatis Bawa Pulang (Retail) vs Pasang di Tempat (Retail + Ongkos)</p>
       </div>
-      <span class="badge badge-primary">Dynamic Pricing v1.0</span>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <button class="btn btn-outline" onclick="openInvoiceModal()" style="font-size: 0.85rem;">📷 Scan Faktur Supplier</button>
+        <button class="btn btn-outline" onclick="openSettingsModal()" style="font-size: 0.85rem;">⚙️ Pengaturan Toko</button>
+        <span class="badge badge-primary" id="headerCurrencyBadge">IDR (Rp)</span>
+      </div>
     </header>
 
     <div class="grid">
@@ -146,7 +158,8 @@
           <thead>
             <tr>
               <th>Item / Layanan</th>
-              <th style="width: 150px;">Opsi Penjualan</th>
+              <th style="width: 140px;">Opsi Penjualan</th>
+              <th style="width: 65px;">Qty</th>
               <th>Harga Part</th>
               <th>Ongkos Pasang</th>
               <th>Subtotal</th>
@@ -155,7 +168,7 @@
           </thead>
           <tbody id="cartTableBody">
             <tr>
-              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">Keranjang kosong. Pilih barang atau jasa untuk menghitung estimasi.</td>
+              <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Keranjang kosong. Pilih barang atau jasa untuk menghitung estimasi.</td>
             </tr>
           </tbody>
         </table>
@@ -167,6 +180,27 @@
             <div style="font-size: 0.8rem; color: var(--text-muted);">Pricing Engine realtime auto-calculated</div>
           </div>
           <div class="total-amount" id="totalAmountDisplay">Rp 0</div>
+        </div>
+
+        <!-- Payment & Cash Tender Section -->
+        <div style="margin-top: 14px; background: #0b1120; border: 1px solid var(--border); border-radius: 6px; padding: 14px; display: grid; grid-template-columns: 180px 1fr 180px; gap: 14px; align-items: center;">
+          <div>
+            <label style="font-size: 0.8rem; margin-bottom: 4px;">Metode Pembayaran</label>
+            <select id="paymentMethodSelect" onchange="handlePaymentMethodChange()">
+              <option value="CASH">Tunai (Cash)</option>
+              <option value="QRIS">QRIS Dinamis</option>
+              <option value="TRANSFER">Transfer Bank</option>
+              <option value="CARD">Kartu Debit/Kredit</option>
+            </select>
+          </div>
+          <div id="cashInputWrapper">
+            <label style="font-size: 0.8rem; margin-bottom: 4px;">Uang Tunai Diterima</label>
+            <input type="number" id="cashReceivedInput" placeholder="0" oninput="updateChangeDisplay()">
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.75rem; color: var(--text-muted);">Kembalian</div>
+            <div id="changeDisplay" style="font-size: 1.2rem; font-weight: 700; color: #10b981;">Rp 0</div>
+          </div>
         </div>
 
         <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 12px;">
@@ -207,13 +241,115 @@
     </div>
   </div>
 
+  <!-- MODAL 1: THERMAL RECEIPT PREVIEW -->
+  <div id="receiptModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size:1.1rem; color:var(--accent);">Struk Kasir Thermal (ESC/POS)</h3>
+        <button class="modal-close" onclick="closeReceiptModal()">&times;</button>
+      </div>
+      <div id="receiptContent" class="receipt-paper">Memuat struk...</div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+        <button class="btn btn-outline" onclick="copyReceiptText()">Salin Teks</button>
+        <button class="btn btn-primary" onclick="printReceiptDirect()">Cetak / Print</button>
+        <button class="btn btn-outline" onclick="closeReceiptModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: INVOICE VISION SCANNER -->
+  <div id="invoiceScanModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:760px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="font-size:1.1rem; color:var(--accent);">Vision AI: Scanner &amp; Rekonsiliasi Faktur Supplier</h3>
+          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Ekstraksi instan nota Astra Otoparts, Yamaha, Denso dengan determinisme finansial</p>
+        </div>
+        <button class="modal-close" onclick="closeInvoiceModal()">&times;</button>
+      </div>
+      <div class="form-group">
+        <label>Tempel / Ketik Teks Nota Faktur Supplier:</label>
+        <textarea id="rawInvoiceInput" rows="5" placeholder="Contoh:&#10;PT ASTRA OTOPARTS TBK&#10;FAKTUR: INV-001&#10;OIL-MPX2 OLI AHM 10 PCS @ 42000 = 420000&#10;SUBTOTAL: 420000&#10;PPN: 46200&#10;TOTAL: 466200" style="font-family:monospace; font-size:0.85rem;"></textarea>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+        <input type="checkbox" id="autoUpdateCatalogCheck" checked style="width:auto;">
+        <label for="autoUpdateCatalogCheck" style="font-size:0.85rem; margin:0; cursor:pointer;">Perbarui harga modal ke database master jika cocok (Auto-update catalog)</label>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="submitInvoiceScan()">⚡ Proses Ekstraksi &amp; Rekonsiliasi</button>
+      
+      <!-- Scan Result Box -->
+      <div id="scanResultBox" style="margin-top:18px; display:none; background:#0b1120; border:1px solid var(--border); border-radius:6px; padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div id="scanVendorTitle" style="font-weight:700; color:#fff;">-</div>
+          <span id="scanAuditBadge" class="badge badge-primary">Audit Lolos</span>
+        </div>
+        <div id="scanAuditStats" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">-</div>
+        <div style="max-height:200px; overflow-y:auto;">
+          <table style="font-size:0.8rem; margin:0;">
+            <thead>
+              <tr><th>SKU Faktur</th><th>Part Cocok</th><th>HPP Baru</th><th>Status</th></tr>
+            </thead>
+            <tbody id="scanItemsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: PENGATURAN TOKO & MULTI-CURRENCY -->
+  <div id="settingsModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:540px;">
+      <div class="modal-header">
+        <h3 style="font-size:1.1rem; color:var(--accent);">Pengaturan Toko &amp; Multi-Currency</h3>
+        <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
+      </div>
+      <div class="form-group">
+        <label>Nama Bengkel</label>
+        <input type="text" id="settingWsName" placeholder="Nama Bengkel Anda">
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div class="form-group">
+          <label>Simbol Mata Uang</label>
+          <input type="text" id="settingCurrSymbol" placeholder="Contoh: Rp, $, ₫, ₹">
+        </div>
+        <div class="form-group">
+          <label>Kode Mata Uang</label>
+          <input type="text" id="settingCurrCode" placeholder="Contoh: IDR, USD, VND">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Header Struk</label>
+        <input type="text" id="settingReceiptHeader" placeholder="LAYANAN SERVIS & SUKU CADANG">
+      </div>
+      <div class="form-group">
+        <label>Footer Struk / Garansi</label>
+        <input type="text" id="settingReceiptFooter" placeholder="Garansi Servis 7 Hari / 500 KM">
+      </div>
+      <div class="form-group">
+        <label>Target Margin Ritel Minimal (%)</label>
+        <input type="number" id="settingMinMargin" placeholder="25">
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+        <button class="btn btn-outline" onclick="closeSettingsModal()">Batal</button>
+        <button class="btn btn-success" onclick="saveSettings()">Simpan Pengaturan</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast">Transaksi Berhasil Disimpan!</div>
 
   <script>
     let motorModels = [];
     let partsCatalog = [];
     let servicesCatalog = [];
-    let cart = []; // [{item_type, item_id, action_type}]
+    let cart = []; // [{item_type, item_id, action_type, quantity}]
+    let currentCartTotal = 0;
+    let currentSettings = {
+      workshop_name: "BENGKELSTACK WORKSHOP OS",
+      currency_symbol: "Rp",
+      currency_code: "IDR",
+      min_margin_pct: 25.0
+    };
 
     function escapeHtml(str) {
       if (!str) return '';
@@ -223,7 +359,8 @@
     }
 
     function formatRupiah(num) {
-      return "Rp " + Math.round(num).toLocaleString("id-ID");
+      const sym = currentSettings.currency_symbol || "Rp";
+      return sym + " " + Math.round(num || 0).toLocaleString();
     }
 
     async function init() {
@@ -232,14 +369,20 @@
     }
 
     async function loadMasterData() {
-      const [resMotors, resParts, resServices] = await Promise.all([
+      const [resMotors, resParts, resServices, resSettings] = await Promise.all([
         fetch('/api/motor-models').then(r => r.json()),
         fetch('/api/parts').then(r => r.json()),
         fetch('/api/services').then(r => r.json()),
+        fetch('/api/settings').then(r => r.json()).catch(() => null),
       ]);
-      motorModels = resMotors;
-      partsCatalog = resParts;
-      servicesCatalog = resServices;
+      motorModels = resMotors || [];
+      partsCatalog = resParts || [];
+      servicesCatalog = resServices || [];
+      if (resSettings && resSettings.workshop_name) {
+        currentSettings = resSettings;
+        document.getElementById('headerTitle').textContent = currentSettings.workshop_name;
+        document.getElementById('headerCurrencyBadge').textContent = `${currentSettings.currency_code} (${currentSettings.currency_symbol})`;
+      }
 
       // Populate motor select
       const motorSelect = document.getElementById('motorSelect');
@@ -478,12 +621,12 @@
       const itemId = parseInt(document.getElementById('itemSelect').value);
       if (!itemId) return;
 
-      // Default action: installed for service, takeaway/installed based on default
       const actionType = type === 'part' ? 'installed' : 'installed';
       cart.push({
         item_type: type,
         item_id: itemId,
-        action_type: actionType
+        action_type: actionType,
+        quantity: 1
       });
       recalculatePricing();
     }
@@ -498,6 +641,12 @@
       recalculatePricing();
     }
 
+    function updateItemQuantity(index, val) {
+      const qty = parseInt(val) || 1;
+      cart[index].quantity = Math.max(1, qty);
+      recalculatePricing();
+    }
+
     async function recalculatePricing() {
       const motorModelId = document.getElementById('motorSelect').value ? parseInt(document.getElementById('motorSelect').value) : null;
       document.getElementById('cartCountBadge').textContent = `${cart.length} Item`;
@@ -505,10 +654,12 @@
       if (cart.length === 0) {
         document.getElementById('cartTableBody').innerHTML = `
           <tr>
-            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">Keranjang kosong. Pilih barang atau jasa untuk menghitung estimasi.</td>
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Keranjang kosong. Pilih barang atau jasa untuk menghitung estimasi.</td>
           </tr>
         `;
+        currentCartTotal = 0;
         document.getElementById('totalAmountDisplay').textContent = formatRupiah(0);
+        updateChangeDisplay();
         return;
       }
 
@@ -523,8 +674,10 @@
       });
       const data = await res.json();
 
+      currentCartTotal = data.total_amount;
       renderCart(data.items);
       document.getElementById('totalAmountDisplay').textContent = formatRupiah(data.total_amount);
+      updateChangeDisplay();
     }
 
     function updateItemManualPrice(idx, field, value) {
@@ -588,6 +741,7 @@
 
         const currentPrice = cart[idx].price !== undefined ? cart[idx].price : item.price;
         const currentFee = cart[idx].install_fee !== undefined ? cart[idx].install_fee : item.install_fee;
+        const currentQty = cart[idx].quantity || item.quantity || 1;
         const saveStdChecked = cart[idx].save_as_standard ? 'checked' : '';
         const saveCustomChecked = cart[idx].save_as_model_custom ? 'checked' : '';
 
@@ -601,14 +755,18 @@
             </td>
             <td>${toggleHtml}</td>
             <td>
-              <input type="number" value="${currentPrice}" style="width: 110px; padding: 4px 8px; font-size: 0.85rem;" 
+              <input type="number" min="1" value="${currentQty}" style="width: 55px; padding: 4px 6px; font-size: 0.85rem;" 
+                onchange="updateItemQuantity(${idx}, this.value)" title="Jumlah kuantitas">
+            </td>
+            <td>
+              <input type="number" value="${currentPrice}" style="width: 100px; padding: 4px 8px; font-size: 0.85rem;" 
                 onchange="updateItemManualPrice(${idx}, 'price', this.value)" title="Ubah harga satuan">
             </td>
             <td>
               ${item.action_type === 'installed' ? `
                 <div style="display:flex; align-items:center; gap:4px;">
                   ${feeBadge}
-                  <input type="number" value="${currentFee}" style="width: 90px; padding: 4px 8px; font-size: 0.85rem;" 
+                  <input type="number" value="${currentFee}" style="width: 85px; padding: 4px 8px; font-size: 0.85rem;" 
                     onchange="updateItemManualPrice(${idx}, 'install_fee', this.value)" title="Ubah ongkos pasang">
                 </div>
               ` : `<span style="color:var(--text-muted);">-</span>`}
@@ -619,7 +777,7 @@
             </td>
           </tr>
           <tr style="background: rgba(15, 23, 42, 0.4);">
-            <td colspan="6" style="padding: 6px 10px; border-bottom: 2px solid var(--border);">
+            <td colspan="7" style="padding: 6px 10px; border-bottom: 2px solid var(--border);">
               <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
                 <div style="display: flex; gap: 16px; align-items: center;">
                   <label style="display: flex; align-items: center; gap: 6px; margin: 0; cursor: pointer; color: #cbd5e1;">
@@ -646,10 +804,35 @@
       recalculatePricing();
     }
 
+    function handlePaymentMethodChange() {
+      const method = document.getElementById('paymentMethodSelect').value;
+      const cashWrap = document.getElementById('cashInputWrapper');
+      if (method === 'CASH') {
+        cashWrap.style.display = 'block';
+      } else {
+        cashWrap.style.display = 'none';
+        document.getElementById('changeDisplay').textContent = formatRupiah(0);
+      }
+    }
+
+    function updateChangeDisplay() {
+      const method = document.getElementById('paymentMethodSelect').value;
+      if (method !== 'CASH') {
+        document.getElementById('changeDisplay').textContent = formatRupiah(0);
+        return;
+      }
+      const cash = parseFloat(document.getElementById('cashReceivedInput').value) || 0;
+      const total = currentCartTotal || 0;
+      const change = Math.max(0, cash - total);
+      document.getElementById('changeDisplay').textContent = formatRupiah(change);
+    }
+
     async function checkoutOrder() {
       const plate = document.getElementById('plateInput').value.trim();
       const motorModelId = document.getElementById('motorSelect').value;
       const customerName = document.getElementById('customerName').value.trim();
+      const method = document.getElementById('paymentMethodSelect').value;
+      const cashVal = parseFloat(document.getElementById('cashReceivedInput').value);
 
       if (!plate) { alert("Harap isi Plat Nomor Kendaraan!"); return; }
       if (!motorModelId) { alert("Harap pilih Model Motor!"); return; }
@@ -664,7 +847,9 @@
           motor_model_id: parseInt(motorModelId),
           customer_name: customerName,
           items: cart,
-          status: 'COMPLETED'
+          status: 'COMPLETED',
+          payment_method: method,
+          cash_received: method === 'CASH' && !isNaN(cashVal) ? cashVal : undefined
         })
       });
 
@@ -673,6 +858,7 @@
         showToast(`Transaksi WO #${order.id} Senilai ${formatRupiah(order.total_amount)} Berhasil Disimpan!`);
         resetCart();
         await loadPlateHistory(plate);
+        openReceiptModal(order.id);
       } else {
         const err = await res.json();
         alert("Gagal menyimpan transaksi: " + (err.error || "Unknown error"));
@@ -684,6 +870,153 @@
       t.textContent = msg;
       t.style.display = 'block';
       setTimeout(() => { t.style.display = 'none'; }, 4000);
+    }
+
+    // THERMAL RECEIPT MODAL
+    let currentReceiptText = "";
+    async function openReceiptModal(woId) {
+      const modal = document.getElementById('receiptModal');
+      const box = document.getElementById('receiptContent');
+      modal.style.display = 'flex';
+      box.textContent = "Memuat data struk...";
+      try {
+        const res = await fetch(`/api/work-orders/${woId}/receipt`);
+        if (res.ok) {
+          const data = await res.json();
+          currentReceiptText = data.receipt_text;
+          box.textContent = currentReceiptText;
+        } else {
+          box.textContent = "Gagal memuat struk kasir.";
+        }
+      } catch (e) {
+        box.textContent = "Error: " + e.message;
+      }
+    }
+
+    function closeReceiptModal() {
+      document.getElementById('receiptModal').style.display = 'none';
+    }
+
+    function copyReceiptText() {
+      if (currentReceiptText) {
+        navigator.clipboard.writeText(currentReceiptText).then(() => {
+          showToast("Teks struk berhasil disalin ke clipboard!");
+        });
+      }
+    }
+
+    function printReceiptDirect() {
+      const printWin = window.open('', '_blank', 'width=450,height=600');
+      const pre = printWin.document.createElement('pre');
+      pre.style.fontFamily = 'monospace';
+      pre.style.fontSize = '12px';
+      pre.style.margin = '20px';
+      pre.textContent = currentReceiptText;
+      printWin.document.body.appendChild(pre);
+      printWin.focus();
+      printWin.print();
+    }
+
+    // INVOICE SCANNER MODAL
+    function openInvoiceModal() {
+      document.getElementById('invoiceScanModal').style.display = 'flex';
+    }
+    function closeInvoiceModal() {
+      document.getElementById('invoiceScanModal').style.display = 'none';
+    }
+
+    async function submitInvoiceScan() {
+      const text = document.getElementById('rawInvoiceInput').value.trim();
+      const autoUpdate = document.getElementById('autoUpdateCatalogCheck').checked;
+      if (!text) { alert("Harap masukkan teks faktur supplier!"); return; }
+
+      const resBox = document.getElementById('scanResultBox');
+      resBox.style.display = 'block';
+      document.getElementById('scanVendorTitle').textContent = "Mengekstrak faktur...";
+      document.getElementById('scanItemsBody').innerHTML = "<tr><td colspan='4'>Memproses OCR &amp; Rekonsiliasi...</td></tr>";
+
+      try {
+        const res = await fetch('/api/invoices/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raw_text: text, apply_update: autoUpdate })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const inv = data.invoice;
+          const audit = data.financial_audit;
+          document.getElementById('scanVendorTitle').textContent = `${inv.vendor} (Faktur: ${inv.invoice_number})`;
+          const badge = document.getElementById('scanAuditBadge');
+          if (audit.is_financially_reconciled) {
+            badge.className = "badge badge-primary";
+            badge.textContent = "Audit Finansial Seimbang";
+          } else {
+            badge.className = "badge badge-custom";
+            badge.textContent = `Discrepansi ${formatRupiah(audit.reconciliation_delta)}`;
+          }
+          document.getElementById('scanAuditStats').textContent = 
+            `Total: ${formatRupiah(inv.grand_total)} | Cocok: ${audit.matched_count}/${audit.items_count} item | Margin Violations: ${audit.margin_violations_count}`;
+
+          const tbody = document.getElementById('scanItemsBody');
+          tbody.innerHTML = data.reconciliation.map(m => `
+            <tr>
+              <td>${escapeHtml(m.invoice_sku)}</td>
+              <td>${m.db_name ? escapeHtml(m.db_name) : '<span style="color:#ef4444;">Belum ada di katalog</span>'}</td>
+              <td>${formatRupiah(m.invoice_unit_cost)}</td>
+              <td>${m.match_type} ${m.auto_updated ? '<span style="color:#10b981;">✓ Updated</span>' : ''}</td>
+            </tr>
+          `).join('');
+
+          if (autoUpdate) {
+            await loadMasterData();
+          }
+        } else {
+          const err = await res.json();
+          alert("Gagal scan faktur: " + (err.error || "Unknown error"));
+        }
+      } catch (e) {
+        alert("Error: " + e.message);
+      }
+    }
+
+    // SETTINGS MODAL
+    function openSettingsModal() {
+      document.getElementById('settingWsName').value = currentSettings.workshop_name || "";
+      document.getElementById('settingCurrSymbol').value = currentSettings.currency_symbol || "Rp";
+      document.getElementById('settingCurrCode').value = currentSettings.currency_code || "IDR";
+      document.getElementById('settingReceiptHeader').value = currentSettings.receipt_header || "";
+      document.getElementById('settingReceiptFooter').value = currentSettings.receipt_footer || "";
+      document.getElementById('settingMinMargin').value = currentSettings.min_margin_pct || 25;
+      document.getElementById('settingsModal').style.display = 'flex';
+    }
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').style.display = 'none';
+    }
+
+    async function saveSettings() {
+      const payload = {
+        workshop_name: document.getElementById('settingWsName').value,
+        currency_symbol: document.getElementById('settingCurrSymbol').value,
+        currency_code: document.getElementById('settingCurrCode').value,
+        receipt_header: document.getElementById('settingReceiptHeader').value,
+        receipt_footer: document.getElementById('settingReceiptFooter').value,
+        min_margin_pct: parseFloat(document.getElementById('settingMinMargin').value) || 25
+      };
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        currentSettings = await res.json();
+        document.getElementById('headerTitle').textContent = currentSettings.workshop_name;
+        document.getElementById('headerCurrencyBadge').textContent = `${currentSettings.currency_code} (${currentSettings.currency_symbol})`;
+        closeSettingsModal();
+        showToast("Pengaturan toko berhasil disimpan!");
+        recalculatePricing();
+      } else {
+        alert("Gagal menyimpan pengaturan!");
+      }
     }
 
     init();

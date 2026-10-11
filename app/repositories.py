@@ -214,3 +214,60 @@ def delete_part(conn: sqlite3.Connection, part_id: int) -> bool:
     conn.commit()
     return cursor.rowcount > 0
 
+
+# ==========================================
+# WORKSHOP SETTINGS (workshop_settings)
+# ==========================================
+
+def get_workshop_settings(conn: sqlite3.Connection) -> Dict[str, Any]:
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, workshop_name, currency_symbol, currency_code, receipt_header, receipt_footer, min_margin_pct "
+        "FROM workshop_settings WHERE id = 1;"
+    )
+    row = cursor.fetchone()
+    if row is None:
+        cursor.execute(
+            "INSERT OR IGNORE INTO workshop_settings (id, workshop_name, currency_symbol, currency_code, min_margin_pct) "
+            "VALUES (1, 'BENGKELSTACK WORKSHOP OS', 'Rp', 'IDR', 25.0);"
+        )
+        conn.commit()
+        cursor.execute(
+            "SELECT id, workshop_name, currency_symbol, currency_code, receipt_header, receipt_footer, min_margin_pct "
+            "FROM workshop_settings WHERE id = 1;"
+        )
+        row = cursor.fetchone()
+    return dict(row)
+
+
+def update_workshop_settings(
+    conn: sqlite3.Connection,
+    workshop_name: Optional[str] = None,
+    currency_symbol: Optional[str] = None,
+    currency_code: Optional[str] = None,
+    receipt_header: Optional[str] = None,
+    receipt_footer: Optional[str] = None,
+    min_margin_pct: Optional[float] = None
+) -> Dict[str, Any]:
+    curr = get_workshop_settings(conn)
+    new_name = workshop_name.strip() if workshop_name is not None else curr["workshop_name"]
+    new_sym = currency_symbol.strip() if currency_symbol is not None else curr["currency_symbol"]
+    new_code = currency_code.strip().upper() if currency_code is not None else curr["currency_code"]
+    new_header = receipt_header.strip() if receipt_header is not None else curr["receipt_header"]
+    new_footer = receipt_footer.strip() if receipt_footer is not None else curr["receipt_footer"]
+    new_margin = float(min_margin_pct) if min_margin_pct is not None else float(curr["min_margin_pct"])
+
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE workshop_settings
+        SET workshop_name = ?, currency_symbol = ?, currency_code = ?,
+            receipt_header = ?, receipt_footer = ?, min_margin_pct = ?
+        WHERE id = 1;
+        """,
+        (new_name, new_sym, new_code, new_header, new_footer, new_margin)
+    )
+    conn.commit()
+    return get_workshop_settings(conn)
+
+

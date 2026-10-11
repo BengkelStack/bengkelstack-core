@@ -66,7 +66,7 @@ class TestDatabaseMigration(unittest.TestCase):
         )
         self.assertEqual(
             get_columns("work_orders"),
-            {"id", "vehicle_id", "status", "total_amount", "created_at"}
+            {"id", "vehicle_id", "status", "total_amount", "payment_method", "cash_received", "change_amount", "created_at"}
         )
         self.assertEqual(
             get_columns("work_order_items"),
