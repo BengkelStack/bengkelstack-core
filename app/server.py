@@ -262,12 +262,18 @@ class WorkshopRequestHandler(BaseHTTPRequestHandler):
         if req_path == "/" or req_path == "":
             file_name = "index.html"
         else:
-            file_name = req_path.lstrip("/")
+            file_name = urllib.parse.unquote(req_path.lstrip("/"))
 
-        file_path = os.path.abspath(os.path.join(STATIC_DIR, file_name))
-        # Ensure path stays within STATIC_DIR
-        if not file_path.startswith(os.path.abspath(STATIC_DIR)):
-            self.send_error(403)
+        base_dir = os.path.abspath(STATIC_DIR)
+        file_path = os.path.abspath(os.path.join(base_dir, file_name))
+        
+        # Ensure path strictly stays within STATIC_DIR
+        try:
+            if os.path.commonpath([base_dir, file_path]) != base_dir:
+                self.send_error(403, "Access denied")
+                return
+        except ValueError:
+            self.send_error(403, "Access denied")
             return
 
         if not os.path.isfile(file_path):
