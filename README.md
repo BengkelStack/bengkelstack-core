@@ -1,44 +1,25 @@
-<div align="center">
+# bengkelstack-core
 
-# BengkelStack Core
+[![CI](https://github.com/BengkelStack/bengkelstack-core/actions/workflows/ci.yml/badge.svg)](https://github.com/BengkelStack/bengkelstack-core/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**Edge-First Operating System for Independent Automotive Repair Workshops**
-
-[![CI Test Suite](https://img.shields.io/badge/CI-83%20Tests%20Passing-success?style=flat-square&logo=github-actions)](https://github.com/BengkelStack/bengkelstack-core)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
-[![Security: OWASP Top 10](https://img.shields.io/badge/Security-OWASP%20API%20Hardened-brightgreen?style=flat-square)](SECURITY.md)
-[![Zero Dependency](https://img.shields.io/badge/Runtime-Python%20Stdlib%20First-blueviolet?style=flat-square)](docs/adr/ADR-001-architecture-stack.md)
-[![NVIDIA Inception Track](https://img.shields.io/badge/NVIDIA%20Inception-Edge%20AI%20Candidate-76b900?style=flat-square&logo=nvidia)](docs/NVIDIA_INCEPTION_PITCH.md)
-
-[Website](https://bengkelstack.com) • [Architecture](docs/ARCHITECTURE.md) • [OpenAPI Spec](docs/api/openapi.yaml) • [Security Policy](SECURITY.md) • [Contributing](CONTRIBUTING.md)
-
-</div>
+Self-hosted point-of-sale and parts pricing engine for motorcycle repair workshops. Runs on the Python 3 standard library with SQLite WAL storage and zero pip runtime dependencies.
 
 ---
 
-## 🚀 Overview
+## Features
 
-Over **120,000 independent motorcycle repair workshops** across Southeast Asia operate with manual pen-and-paper receipts and fragmented inventory catalogs. Workshops routinely lose **15% to 28% of gross profit margins** due to:
-1. **Unstandardized Mechanic Labor Pricing:** Mechanics arbitrarily estimate installation fees without vehicle-specific flat-rate matrices.
-2. **Unreconciled Parts Ingestion:** Physical paper invoices from OEM distributors (Astra Otoparts, Yamaha Genuine Parts, Denso) pile up without digitization, causing parts to be sold below wholesale replacement costs.
-3. **Flaky Internet Connectivity:** Cloud-only SaaS POS systems fail when shop Wi-Fi or cellular connections drop during peak afternoon repair hours.
-
-**BengkelStack** solves this through an **Edge-First, Local-First Architecture**: zero external dependencies, instant startup (< 0.2s), SQLite Write-Ahead Logging (WAL) concurrency, and built-in multimodal invoice ingestion with financial reconciliation determinism.
-
----
-
-## ⚡ Core Capabilities
-
-- **🔍 Instant Plate Lookup (< 1s):** Clean regex normalization of Indonesian vehicle registration plates (e.g. `B 1234 XYZ`) returning complete past repair logs, replaced parts, and owner details.
-- **⚖️ Dual-Tier Dynamic Pricing Engine:** Mathematically separates **Retail Takeaway** (`price`) from **In-Shop Installation** (`price + install_fee`), with model-specific complexity overrides (e.g., Honda Vario vs Yamaha NMAX CVT disassemblies).
-- **👁️ Multimodal Invoice Vision Ingestion:** Local parser for physical supplier receipts with strict financial determinism (`sum(subtotal) == grand_total`).
-- **🎯 Fuzzy OEM Catalog Matcher:** SequenceMatcher-backed fuzzy catalog alignment protecting against wholesale inflation with an automated minimum 25% gross retail margin guard.
-- **🧾 Thermal Receipt Printing:** Built-in 40-column ESC/POS formatted receipt engine with itemized breakdowns and 7-day service warranty guarantees.
-- **🛡️ Institutional Security:** Constant-time token verification (`secrets.compare_digest`), local loopback fail-safe protection (`403 Forbidden` for untrusted LAN IPs), 1MB payload ceilings, and sliding-window rate limiting (120 req/min).
+- **Dual-Tier Dynamic Pricing:** Splits parts retail price from vehicle-specific installation labor (e.g. Honda Beat vs Yamaha NMAX CVT disassemblies).
+- **Plate Number Lookup:** Regex normalization for vehicle registration numbers, retrieving customer ownership and chronological repair history.
+- **Multimodal Invoice Ingestion:** Parser for OEM parts distributor invoices (Astra Otoparts, Yamaha, Denso) with mathematical determinism checks (`sum(subtotal) == grand_total`).
+- **Fuzzy Catalog Matcher:** SequenceMatcher-backed catalog mapper that flags cost inflation and enforces an automated minimum 25% gross retail margin.
+- **Thermal Receipt Formatter:** Generates clean 40-column monospaced receipts compatible with ESC/POS 58mm and 80mm thermal printers.
+- **Idempotency Guard:** Protects against duplicate checkout submissions and double-billing via unique transaction tokens.
+- **Local Network Isolation:** Defaults to localhost loopback access (`127.0.0.1`), with constant-time Bearer token verification (`secrets.compare_digest`) required for external IP requests.
 
 ---
 
-## 🏗️ System Architecture
+## Architecture
 
 ```text
 +-------------------------------------------------------------------------+
@@ -89,62 +70,59 @@ Open your browser at **`http://localhost:8089`** to access the live workshop POS
 
 ---
 
-## 🧪 Testing & Verification
+## Testing
 
-We enforce the **Iron Law of TDD**. All functional features, edge cases, security hardening, and financial invariants are covered by automated tests.
+The project maintains 83 unit and integration test cases covering domain logic, concurrent writes, API endpoints, pentest security, and data migrations.
 
 ```bash
-# Run the complete test suite
 python -m unittest discover -s tests -v
 ```
 
-**Results:**
-- **83 / 83 tests passing (100% Green)**
-- Execution time: **~1.7 seconds**
-- Zero compiler warnings, zero deprecation warnings, zero leaks.
+All tests execute against an isolated in-memory or temporary SQLite database in approximately 1.5 seconds without network calls.
 
 ---
 
-## 📜 5-Gate Enterprise SDLC Documentation
+## Specifications & Architecture Records
 
-BengkelStack is engineered strictly following formal **5-Gate Enterprise SDLC** standards:
+Engineering documentation and formal decision records:
 
-| Gate | Deliverable | Description |
+| Document | Path | Description |
 | :--- | :--- | :--- |
-| **Gate 1** | [`docs/PRD.md`](docs/PRD.md) | Problem statement (5 Whys), KPIs, personas, and scope boundary. |
-| **Gate 2** | [`docs/SRS.md`](docs/SRS.md) | IEEE 830 / ISO 25010 formal specification (FR-01 to FR-08, NFRs). |
-| **Gate 3** | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 3NF data model, state machines, and [`docs/adr/ADR-001`](docs/adr/ADR-001-architecture-stack.md). |
-| **Gate 4** | [`docs/api/openapi.yaml`](docs/api/openapi.yaml) | Contract-first OpenAPI 3.0.3 specification for all REST endpoints. |
-| **Gate 5** | [`tests/`](tests/) | 77 automated test suites covering pricing, security, vision, concurrency, and orders. |
+| **Product Requirements** | [`docs/PRD.md`](docs/PRD.md) | Problem analysis (5 Whys), user personas, and scope boundary. |
+| **Engineering Requirements** | [`docs/SRS.md`](docs/SRS.md) | IEEE 830 / ISO 25010 specification (FR-01 to FR-08, NFRs). |
+| **System Architecture** | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 3NF relational data model and work order state machine. |
+| **API Contract** | [`docs/api/openapi.yaml`](docs/api/openapi.yaml) | OpenAPI 3.0.3 specification for all REST endpoints. |
+| **ADR-001** | [`docs/adr/ADR-001-architecture-stack.md`](docs/adr/ADR-001-architecture-stack.md) | Zero-dependency standard library and SQLite WAL storage. |
+| **ADR-002** | [`docs/adr/ADR-002-multi-currency-and-payments.md`](docs/adr/ADR-002-multi-currency-and-payments.md) | Dynamic multi-currency configuration and cash change tracking. |
 
-### Formal Audit PDF Reports
-- 📄 [Comprehensive SDLC Audit & Production Readiness Master Report (PDF)](docs/BengkelStack_Comprehensive_SDLC_Audit_Report.pdf)
-- 📄 [System Architecture & 5-Gate Report (PDF)](docs/BengkelStack_Architecture_Report.pdf)
-- 📄 [Institutional Security & OWASP Audit Report (PDF)](docs/BengkelStack_Institutional_Security_Report.pdf)
-- 📄 [NVIDIA Inception Qualification Pitch Report (PDF)](docs/BengkelStack_NVIDIA_Inception_Report.pdf)
-- 📄 [Consumer Trust & Pentest Security Report (PDF)](docs/BengkelStack_Consumer_Security_Report.pdf)
-
----
-
-## 🤖 NVIDIA Inception Track & Edge AI Roadmap
-
-BengkelStack is architected for the **NVIDIA Inception Program (Computer Vision & Edge AI Track)**:
-
-1. **On-Premise TensorRT Inferencing:** Running quantized INT8/FP16 Vision Transformer models on low-power **NVIDIA Jetson Orin Nano** units installed directly in physical repair bays.
-2. **Air-Gapped Privacy:** Invoices and proprietary wholesale purchase agreements are parsed locally without transmitting sensitive supplier discounts over the public internet.
-3. **Continuous Catalog Self-Healing:** Discrepancies between physical OEM packing slips and digital catalogs are reconciled in real-time at the edge.
-
-See [`docs/NVIDIA_INCEPTION_PITCH.md`](docs/NVIDIA_INCEPTION_PITCH.md) for technical reviewer documentation.
+### Technical Reports (PDF)
+- [Comprehensive SDLC Audit & Master Report (PDF)](docs/BengkelStack_Comprehensive_SDLC_Audit_Report.pdf)
+- [System Architecture Specification (PDF)](docs/BengkelStack_Architecture_Report.pdf)
+- [Institutional Security & OWASP Audit (PDF)](docs/BengkelStack_Institutional_Security_Report.pdf)
+- [NVIDIA Inception Edge AI Technical Pitch (PDF)](docs/BengkelStack_NVIDIA_Inception_Report.pdf)
+- [Consumer Trust & Pentest Security Report (PDF)](docs/BengkelStack_Consumer_Security_Report.pdf)
 
 ---
 
-## 🔒 Security Policy
+## Edge AI Roadmap (NVIDIA Inception)
 
-For security vulnerability disclosure, please refer to our [`SECURITY.md`](SECURITY.md). Never report vulnerabilities through public issues. Contact: `founder@bengkelstack.com`.
+For edge deployments in areas with intermittent connectivity, the repository includes a roadmap for local hardware acceleration:
+
+1. **On-Premise TensorRT Inferencing:** Quantized INT8/FP16 Vision Transformer models on low-power NVIDIA Jetson Orin Nano hardware.
+2. **Local Processing:** Invoices and proprietary wholesale purchase agreements are parsed locally without transmitting supplier pricing over public networks.
+3. **Continuous Catalog Alignment:** Discrepancies between physical OEM packing slips and digital catalogs are reconciled in real time at the edge.
+
+Reviewer technical pitch documentation: [`docs/NVIDIA_INCEPTION_PITCH.md`](docs/NVIDIA_INCEPTION_PITCH.md).
 
 ---
 
-## 📄 License
+## Security
+
+Please report vulnerabilities directly via email to `founder@bengkelstack.com`. Do not disclose security vulnerabilities through public GitHub issues. See [`SECURITY.md`](SECURITY.md) for details.
+
+---
+
+## License
 
 BengkelStack Core is licensed under the [MIT License](LICENSE).  
 Copyright (c) 2026 BengkelStack / Rahmad Riyadi.
