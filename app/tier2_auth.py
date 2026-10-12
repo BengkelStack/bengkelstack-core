@@ -101,6 +101,9 @@ def sign_sync_request(
     nonce: str,
     body: bytes = b""
 ) -> str:
+    # Fail-closed guard: prevent HMAC calculation with empty or unconfigured secret
+    if not device_secret or not isinstance(device_secret, str) or not device_secret.strip():
+        raise ValueError("device_secret must be a non-empty string (fail-closed guard)")
     canonical = build_canonical_payload(method, path, timestamp, nonce, body)
     return hmac.new(device_secret.encode("utf-8"), canonical, hashlib.sha256).hexdigest()
 
@@ -144,6 +147,14 @@ def verify_sync_request(
     replay_guard: Optional[ReplayGuard] = None,
     now: Optional[float] = None
 ) -> Tuple[bool, str]:
+    # Fail-closed guard: empty secret, signature, or nonce must be rejected immediately
+    if not device_secret or not isinstance(device_secret, str) or not device_secret.strip():
+        return False, "Fail-closed rejection: device_secret is empty or unconfigured"
+    if not signature or not isinstance(signature, str) or not signature.strip():
+        return False, "Fail-closed rejection: signature is empty or invalid"
+    if not nonce or not isinstance(nonce, str) or not nonce.strip():
+        return False, "Fail-closed rejection: nonce is empty or invalid"
+
     if replay_guard:
         ok, msg = replay_guard.is_valid_and_record(nonce, timestamp, now)
         if not ok:

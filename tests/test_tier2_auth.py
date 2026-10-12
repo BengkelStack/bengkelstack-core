@@ -163,6 +163,29 @@ class TestTier2AuthSecurity(unittest.TestCase):
         with self.assertRaises(PermissionError):
             enforce_tenant_predicate(invalid_sql, tenant_param_present=True)
 
+    def test_fail_closed_hmac_and_secrets(self):
+        # 1. sign_sync_request with empty secret must raise ValueError
+        with self.assertRaises(ValueError):
+            sign_sync_request("", "POST", "/api/v1/sync/push", 1700000000, "nonce123", b"body")
+
+        with self.assertRaises(ValueError):
+            sign_sync_request(None, "POST", "/api/v1/sync/push", 1700000000, "nonce123", b"body")
+
+        # 2. verify_sync_request with empty secret must fail closed
+        ok, msg = verify_sync_request("", "POST", "/api/v1/sync/push", 1700000000, "nonce123", b"body", "any_sig")
+        self.assertFalse(ok)
+        self.assertIn("fail-closed", msg.lower())
+
+        # 3. verify_sync_request with empty signature must fail closed
+        ok, msg = verify_sync_request("valid_secret", "POST", "/api/v1/sync/push", 1700000000, "nonce123", b"body", "")
+        self.assertFalse(ok)
+        self.assertIn("fail-closed", msg.lower())
+
+        # 4. verify_sync_request with empty nonce must fail closed
+        ok, msg = verify_sync_request("valid_secret", "POST", "/api/v1/sync/push", 1700000000, "", b"body", "sig")
+        self.assertFalse(ok)
+        self.assertIn("fail-closed", msg.lower())
+
 
 if __name__ == "__main__":
     unittest.main()

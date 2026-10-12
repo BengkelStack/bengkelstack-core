@@ -44,6 +44,13 @@ def register_tenant(
     if not tenant_name or not email or not password:
         return False, 400, {"error": "Missing required fields: tenant_name, email, password"}
 
+    if len(password) > 1024:
+        return False, 400, {"error": "Password exceeds maximum allowable length of 1024 characters"}
+    if len(email) > 255:
+        return False, 400, {"error": "Email exceeds maximum allowable length of 255 characters"}
+    if len(tenant_name) > 255:
+        return False, 400, {"error": "Tenant name exceeds maximum allowable length of 255 characters"}
+
     email = email.lower().strip()
     if "@" not in email:
         return False, 400, {"error": "Invalid email address"}
