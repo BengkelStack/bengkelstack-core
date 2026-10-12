@@ -120,11 +120,11 @@ def build_pdf(filename="BengkelStack_Comprehensive_SDLC_Audit_Report.pdf"):
         ],
         [
             Paragraph("<b>Status 5-Gate SDLC:</b> 100% COMPLIANT & CERTIFIED", body_style),
-            Paragraph("<b>Test Suite:</b> 77 / 77 Tests Passing (100% Green)", body_style)
+            Paragraph("<b>Test Suite:</b> 88 / 88 Tests Passing (100% Green)", body_style)
         ],
         [
-            Paragraph("<b>Audit Keamanan:</b> Zero High/Critical Defects", body_style),
-            Paragraph("<b>Tanggal Sertifikasi:</b> 10 Oktober 2026", body_style)
+            Paragraph("<b>QA Verification:</b> White-Box & CDP Chrome Black-Box", body_style),
+            Paragraph("<b>Tanggal Sertifikasi:</b> 12 Oktober 2026", body_style)
         ]
     ]
     meta_table = Table(meta_data, colWidths=[240, 247])
@@ -172,7 +172,7 @@ def build_pdf(filename="BengkelStack_Comprehensive_SDLC_Audit_Report.pdf"):
         [
             Paragraph("<b>Gate 5: TDD & PRR</b>", body_style),
             Paragraph("Testing & Determinisme", body_style),
-            Paragraph("77 unit & integration tests pass; determinisme finansial seimbang; PRR 10-Gate lolos.", body_style),
+            Paragraph("88 unit & integration tests pass; 10/10 white-box frontend tests pass; 9-Gate CDP browser test lolos 100%.", body_style),
             Paragraph("<b>APPROVED</b>", body_style)
         ]
     ]
