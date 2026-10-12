@@ -1,0 +1,290 @@
+openapi: 3.0.3
+info:
+  title: BengkelStack Cloud Multi-Tenant & Central Admin API
+  version: 2.0.0
+  description: >
+    Formal REST specification for BengkelStack Cloud Platform (Tier 2).
+    Includes multi-tenant identity, role-based access control, edge-to-cloud pairing,
+    and SuperAdmin fleet governance.
+servers:
+  - url: https://api.bengkelstack.com/v1
+    description: Production Cloud Gateway
+  - url: http://localhost:8089/api/v1
+    description: Local Testing Environment
+
+paths:
+  /auth/register:
+    post:
+      summary: Register New Workshop Tenant & Owner Account
+      operationId: registerTenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenant_name
+                - email
+                - password
+              properties:
+                tenant_name:
+                  type: string
+                  example: Bengkel Maju Motor
+                slug:
+                  type: string
+                  example: maju-motor
+                owner_name:
+                  type: string
+                  example: Budi Santoso
+                email:
+                  type: string
+                  format: email
+                  example: budi@majumotor.id
+                password:
+                  type: string
+                  format: password
+                  example: PasswordAman123!
+                country_code:
+                  type: string
+                  example: ID
+                currency:
+                  type: string
+                  example: IDR
+      responses:
+        '201':
+          description: Tenant and owner created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid payload or duplicate email/slug
+
+  /auth/login:
+    post:
+      summary: User Authentication & Session Token Issuance
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+        '403':
+          description: Tenant suspended
+
+  /auth/logout:
+    post:
+      summary: Invalidate Current Session
+      operationId: logoutUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logged out successfully
+
+  /admin/tenants:
+    get:
+      summary: List Registered Workshop Tenants (SuperAdmin Only)
+      operationId: listTenants
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, SUSPENDED, TRIAL, ALL]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tenant list returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TenantSummary'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '403':
+          description: Forbidden (Requires SUPERADMIN role)
+
+  /admin/tenants/{id}/status:
+    patch:
+      summary: Update Tenant Status (Suspend/Activate)
+      operationId: updateTenantStatus
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [ACTIVE, SUSPENDED, TRIAL]
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Status updated successfully
+        '403':
+          description: Forbidden
+
+  /owner/sync-key/generate:
+    post:
+      summary: Generate New Edge Terminal Pairing Key
+      operationId: generateSyncKey
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label:
+                  type: string
+                  example: Front Counter PC
+      responses:
+        '201':
+          description: Sync key generated (Plaintext returned once)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key_id:
+                    type: integer
+                  prefix:
+                    type: string
+                  api_key:
+                    type: string
+                  label:
+                    type: string
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: OpaqueToken
+
+  schemas:
+    AuthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          type: object
+          properties:
+            user:
+              type: object
+              properties:
+                id:
+                  type: integer
+                email:
+                  type: string
+                role:
+                  type: string
+                full_name:
+                  type: string
+            tenant:
+              type: object
+              properties:
+                id:
+                  type: integer
+                slug:
+                  type: string
+                name:
+                  type: string
+                plan:
+                  type: string
+                status:
+                  type: string
+            tokens:
+              type: object
+              properties:
+                access_token:
+                  type: string
+                expires_in:
+                  type: integer
+
+    TenantSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        name:
+          type: string
+        country_code:
+          type: string
+        plan:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total_records:
+          type: integer
+        total_pages:
+          type: integer

@@ -48,6 +48,17 @@ def run_migrations(conn: Optional[sqlite3.Connection] = None, db_path: Optional[
     cursor.execute("INSERT OR IGNORE INTO workshop_settings (id, workshop_name, currency_symbol, currency_code, min_margin_pct) VALUES (1, 'BENGKELSTACK WORKSHOP OS', 'Rp', 'IDR', 25.0);")
     cursor.execute("INSERT OR IGNORE INTO schema_migrations (version) VALUES ('002_settings_and_payments');")
     cursor.execute("INSERT OR IGNORE INTO schema_migrations (version) VALUES ('003_idempotency_keys');")
+
+    # Migration 004: Cloud Multi-Tenant Architecture & Admin
+    cursor.execute("SELECT version FROM schema_migrations WHERE version = '004_cloud_multi_tenant';")
+    if not cursor.fetchone():
+        cloud_schema_path = os.path.join(os.path.dirname(__file__), "cloud_schema.sql")
+        if os.path.isfile(cloud_schema_path):
+            with open(cloud_schema_path, "r", encoding="utf-8") as f:
+                cloud_sql = f.read()
+            conn.executescript(cloud_sql)
+        cursor.execute("INSERT OR IGNORE INTO schema_migrations (version) VALUES ('004_cloud_multi_tenant');")
+
     conn.commit()
 
     if close_after:

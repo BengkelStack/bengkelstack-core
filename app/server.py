@@ -31,6 +31,17 @@ from app.security import (
 )
 from app.invoice_vision import parse_invoice_text, parse_invoice_json
 from app.catalog_matcher import reconcile_invoice_document
+from app.cloud_service import (
+    register_tenant,
+    login_user,
+    logout_user,
+    get_authenticated_user,
+    list_tenants,
+    update_tenant_status,
+    generate_tenant_sync_key,
+    list_tenant_sync_keys,
+    get_fleet_metrics,
+)
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
 
@@ -38,11 +49,23 @@ STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
 rate_limiter = RateLimiter(max_requests=120, window_seconds=60.0)
 
 
+def get_bearer_token(headers: Optional[dict]) -> Optional[str]:
+    if not headers:
+        return None
+    for k, v in headers.items():
+        if k.lower() == "authorization":
+            val = str(v).strip()
+            if val.startswith("Bearer ") or val.startswith("bearer "):
+                return val[7:].strip()
+    return None
+
+
 def handle_api_request(
     conn: sqlite3.Connection,
     method: str,
     path: str,
-    body: Optional[dict] = None
+    body: Optional[dict] = None,
+    headers: Optional[dict] = None
 ) -> Tuple[int, Any]:
     parsed = urllib.parse.urlparse(path)
     endpoint = parsed.path
@@ -108,6 +131,61 @@ def handle_api_request(
                         return 404, {"error": "Unknown sub-resource"}
                 except ValueError:
                     return 400, {"error": "Invalid work order id"}
+
+        # Tier 2 Cloud Platform Endpoints
+        elif endpoint == "/api/v1/owner/profile":
+            token = get_bearer_token(headers)
+            user = get_authenticated_user(conn, token)
+            if not user or user["role"] not in ("OWNER", "SUPERADMIN"):
+                return 401, {"error": "Unauthorized: valid session token required"}
+            return 200, {
+                "status": "success",
+                "data": {
+                    "user": {
+                        "id": user["user_id"],
+                        "email": user["email"],
+                        "full_name": user["full_name"],
+                        "role": user["role"]
+                    },
+                    "tenant": {
+                        "id": user["tenant_id"],
+                        "name": user["tenant_name"],
+                        "slug": user["tenant_slug"],
+                        "plan": user["tenant_plan"],
+                        "status": user["tenant_status"]
+                    } if user["tenant_id"] else None
+                }
+            }
+
+        elif endpoint == "/api/v1/owner/sync-keys":
+            token = get_bearer_token(headers)
+            user = get_authenticated_user(conn, token)
+            if not user or user["role"] not in ("OWNER", "SUPERADMIN"):
+                return 401, {"error": "Unauthorized: valid session token required"}
+            if not user["tenant_id"]:
+                return 400, {"error": "No associated tenant"}
+            keys = list_tenant_sync_keys(conn, user["tenant_id"])
+            return 200, {"status": "success", "data": keys}
+
+        elif endpoint == "/api/v1/admin/tenants":
+            token = get_bearer_token(headers)
+            user = get_authenticated_user(conn, token)
+            if not user or user["role"] != "SUPERADMIN":
+                return 401 if not user else 403, {"error": "Forbidden: SuperAdmin role required"}
+            page = int(query_params.get("page", [1])[0])
+            limit = int(query_params.get("limit", [20])[0])
+            status_f = query_params.get("status", [None])[0]
+            search = query_params.get("search", [None])[0]
+            res = list_tenants(conn, page=page, limit=limit, status_filter=status_f, search=search)
+            return 200, {"status": "success", "data": res}
+
+        elif endpoint == "/api/v1/admin/metrics/overview":
+            token = get_bearer_token(headers)
+            user = get_authenticated_user(conn, token)
+            if not user or user["role"] != "SUPERADMIN":
+                return 401 if not user else 403, {"error": "Forbidden: SuperAdmin role required"}
+            metrics = get_fleet_metrics(conn)
+            return 200, {"status": "success", "data": metrics}
 
     elif method == "POST":
         if endpoint == "/api/calculate":
@@ -203,6 +281,70 @@ def handle_api_request(
                 }
             }
 
+        # Tier 2 Cloud Platform Endpoints
+        elif endpoint == "/api/v1/auth/register":
+            if not body:
+                return 400, {"error": "Missing payload"}
+            ok, code, res = register_tenant(
+                conn,
+                tenant_name=body.get("tenant_name", ""),
+                owner_name=body.get("owner_name", "Owner"),
+                email=body.get("email", ""),
+                password=body.get("password", ""),
+                country_code=body.get("country_code", "ID"),
+                currency=body.get("currency", "IDR"),
+                plan=body.get("plan", "FREE"),
+                slug=body.get("slug")
+            )
+            return code, res
+
+        elif endpoint == "/api/v1/auth/login":
+            if not body:
+                return 400, {"error": "Missing payload"}
+            ok, code, res = login_user(
+                conn,
+                email=body.get("email", ""),
+                password=body.get("password", "")
+            )
+            return code, res
+
+        elif endpoint == "/api/v1/auth/logout":
+            token = get_bearer_token(headers)
+            if not token:
+                return 401, {"error": "Missing bearer token"}
+            logout_user(conn, token)
+            return 200, {"status": "success", "message": "Logged out successfully"}
+
+        elif endpoint == "/api/v1/owner/sync-key/generate":
+            token = get_bearer_token(headers)
+            user = get_authenticated_user(conn, token)
+            if not user or user["role"] not in ("OWNER", "SUPERADMIN"):
+                return 401, {"error": "Unauthorized: valid session token required"}
+            if not user["tenant_id"]:
+                return 400, {"error": "No associated tenant"}
+            label = body.get("label", "Edge Terminal") if body else "Edge Terminal"
+            ok, code, res = generate_tenant_sync_key(conn, user["tenant_id"], label=label)
+            return code, res
+
+    elif method == "PATCH":
+        if endpoint.startswith("/api/v1/admin/tenants/") and endpoint.endswith("/status"):
+            token = get_bearer_token(headers)
+            user = get_authenticated_user(conn, token)
+            if not user or user["role"] != "SUPERADMIN":
+                return 401 if not user else 403, {"error": "Forbidden: SuperAdmin role required"}
+            parts = endpoint.strip("/").split("/")
+            if len(parts) == 6 and parts[3] == "tenants" and parts[5] == "status":
+                try:
+                    tenant_id = int(parts[4])
+                    if not body or "status" not in body:
+                        return 400, {"error": "Missing status in payload"}
+                    ok, code, res = update_tenant_status(
+                        conn, tenant_id, new_status=body["status"], reason=body.get("reason")
+                    )
+                    return code, res
+                except ValueError:
+                    return 400, {"error": "Invalid tenant id"}
+
     return 404, {"error": f"Endpoint not found: {method} {endpoint}"}
 
 
@@ -212,7 +354,7 @@ class WorkshopRequestHandler(BaseHTTPRequestHandler):
         for h_name, h_val in get_security_headers().items():
             self.send_header(h_name, h_val)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         self.end_headers()
 
@@ -231,7 +373,7 @@ class WorkshopRequestHandler(BaseHTTPRequestHandler):
 
             try:
                 conn = get_connection()
-                status, data = handle_api_request(conn, "GET", self.path, None)
+                status, data = handle_api_request(conn, "GET", self.path, None, headers=dict(self.headers))
                 conn.close()
             except Exception:
                 status, data = 500, {"error": "Internal server error"}
@@ -241,6 +383,12 @@ class WorkshopRequestHandler(BaseHTTPRequestHandler):
             self._serve_static()
 
     def do_POST(self):
+        self._handle_mutation("POST")
+
+    def do_PATCH(self):
+        self._handle_mutation("PATCH")
+
+    def _handle_mutation(self, method: str):
         client_ip = self.client_address[0] if self.client_address else "127.0.0.1"
 
         if not rate_limiter.is_allowed(client_ip):
@@ -266,7 +414,7 @@ class WorkshopRequestHandler(BaseHTTPRequestHandler):
 
             try:
                 conn = get_connection()
-                status, data = handle_api_request(conn, "POST", self.path, body)
+                status, data = handle_api_request(conn, method, self.path, body, headers=dict(self.headers))
                 conn.close()
             except Exception:
                 status, data = 500, {"error": "Internal server error"}
