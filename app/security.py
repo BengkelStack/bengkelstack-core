@@ -31,10 +31,11 @@ def verify_auth(headers: Dict[str, str], client_ip: str) -> Tuple[bool, int, str
             return False, 401, "Unauthorized: Invalid token"
         return True, 200, "Authorized"
 
-    # When no API key is configured, only local machine loopback is permitted
+    # When no API key is configured, local machine loopback and private Tailscale network are permitted
     is_loopback = client_ip in ("127.0.0.1", "::1", "localhost", "testclient")
-    if is_loopback:
-        return True, 200, "Authorized (Local Loopback)"
+    is_tailscale = client_ip.startswith("100.")
+    if is_loopback or is_tailscale:
+        return True, 200, "Authorized"
     
     return False, 403, "Forbidden: External connection requires configured BENGKELSTACK_API_KEY"
 
