@@ -72,13 +72,13 @@ Open your browser at **`http://localhost:8089`** to access the live workshop POS
 
 ## Testing
 
-The project maintains 83 unit and integration test cases covering domain logic, concurrent writes, API endpoints, pentest security, and data migrations.
+The project maintains 88 unit and integration test cases covering domain logic, concurrent writes, API endpoints, pentest security, data migrations, and boundary white-box edge cases.
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-All tests execute against an isolated in-memory or temporary SQLite database in approximately 1.5 seconds without network calls.
+All tests execute against an isolated in-memory or temporary SQLite database in approximately 1.7 seconds without network calls.
 
 ---
 
